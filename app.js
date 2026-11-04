@@ -5,29 +5,45 @@
   Everything is saved on this device (localStorage). No account needed.
 
   How this file is organised:
-    1. Constants        - colours, icons, suggestions
+    1. Constants        - colours, icons, moods, tips and quotes
     2. Date helpers     - dates are stored as "YYYY-MM-DD" strings
     3. Saving/loading   - read and write data in localStorage
     4. Habit maths      - streaks, completion rates, daily progress
-    5. Screens          - Today, All habits, Habit details, Stats, Me
-    6. Add/edit sheet   - the form for creating or changing a habit
+    5. Screens          - Today, Stats, All habits, Me, and each habit's counter and Stat pages
+    6. Sheets           - add/edit a habit, memo, mood and note, keypad, tips, profile
     7. Actions          - what happens when you tap things
+    8. Reminders        - a notification at the chosen time while the app is open
 */
 
 /* ---------- 1. Constants ---------- */
 
 const STORAGE_KEY = 'habit-for-me:v1';
-const COLORS = ['#ee4d6f', '#5b7fd8', '#12a4b6', '#1faf7a', '#f0883e', '#d04aae', '#8b63d6', '#e0a21f'];
-const ICONS = ['💧', '📚', '🏃', '🧘', '🥗', '😴', '✍️', '🎸', '🧹', '💊', '🚭', '☀️', '🪥', '🚶', '💪', '🙏', '🍎', '💻', '🌱', '🎯'];
-const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]; // 0 = Sunday ... 6 = Saturday
-const SUGGESTIONS = [
-  { name: 'Drink water', icon: '💧', color: '#12a4b6', goal: 8 },
-  { name: 'Read 20 minutes', icon: '📚', color: '#8b63d6', goal: 1 },
-  { name: 'Go for a walk', icon: '🚶', color: '#5b7fd8', goal: 1 },
-  { name: 'Meditate', icon: '🧘', color: '#d04aae', goal: 1 },
-  { name: 'Sleep by 11pm', icon: '😴', color: '#1faf7a', goal: 1 },
+const MAX_COUNT = 999; // the most times a habit can be counted in one day
+
+// Colour sets in the colour picker.
+const PALETTES = [
+  ['Bright', ['#ff5a7a', '#ff6b6b', '#ff8a5c', '#ffa94d', '#ffc542', '#f5d547', '#c8e05a',
+    '#7ed957', '#3ccf7a', '#20c9a6', '#2ec4d6', '#3ab4ff', '#3d8bff', '#2f6bff',
+    '#5b6cff', '#7c5cff', '#a05cff', '#c85cf0', '#f05cc8', '#ff6fa8', '#a1887f']],
+  ['Soft', ['#f8bbd0', '#ffcdd2', '#ffccbc', '#ffe0b2', '#fff59d', '#f0f4c3', '#dcedc8',
+    '#c8e6c9', '#b2dfdb', '#b2ebf2', '#b3e5fc', '#bbdefb', '#c5cae9', '#d1c4e9',
+    '#e1bee7', '#f3d1f4', '#d7ccc8', '#cfd8dc', '#ffe4ec', '#e6f4ea', '#e3e8ff']],
 ];
-const RANGES = [['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']];
+const NEW_COLORS = ['#2f6bff', '#ff5a7a', '#20c9a6', '#ffa94d', '#7c5cff', '#3ccf7a', '#f05cc8'];
+const ICONS = ['💪', '🏃', '🚶', '🧘', '🚴', '🏊', '💧', '🥗', '🍎', '🍵', '😴', '🛏️', '📚', '📖', '✍️', '📝',
+  '🎯', '💻', '🧠', '🎸', '🎨', '🎧', '🧹', '🪥', '🧴', '💊', '🚭', '📵', '☀️', '🌱', '🙏', '🕌', '📿', '💰',
+  '💼', '🗣️', '🐶', '⚽', '❤️', '⭐'];
+const AVATARS = ['🙂', '😎', '🦁', '🐼', '🦊', '🐯', '🐨', '🐸', '🦉', '🌻', '⭐', '🚀', '🧕', '👩', '👨', '🧔', '👧', '👦'];
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]; // 0 = Sunday ... 6 = Saturday
+const TIMES = [['any', 'Anytime', '🕘'], ['morning', 'Morning', '🌅'], ['afternoon', 'Afternoon', '☀️'], ['evening', 'Evening', '🌙']];
+const SUGGESTIONS = [
+  { name: 'Drink water', icon: '💧', color: '#2ec4d6', goal: 8, unit: 'glasses' },
+  { name: 'Read', icon: '📚', color: '#7c5cff', goal: 1, desc: '20 minutes' },
+  { name: 'Go for a walk', icon: '🚶', color: '#3d8bff', goal: 1 },
+  { name: 'Workout', icon: '💪', color: '#2f6bff', goal: 1, desc: 'Gym' },
+  { name: 'Meditate', icon: '🧘', color: '#f05cc8', goal: 1 },
+  { name: 'Sleep by 11pm', icon: '😴', color: '#3ccf7a', goal: 1 },
+];
 const MOODS = [
   { emoji: '😞', label: 'Awful' },
   { emoji: '🙁', label: 'Bad' },
@@ -35,14 +51,55 @@ const MOODS = [
   { emoji: '🙂', label: 'Good' },
   { emoji: '😄', label: 'Great' },
 ];
+const MEMO_EMOJIS = ['😀', '🙂', '😐', '🙁', '😢', '😂', '🥰', '😎', '😴', '😤', '🤒', '🥳'];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/; // "HH:MM", e.g. "08:30"
 
+// Short lines for the Daily quote card (a different one each day).
+const QUOTES = [
+  'Small steps every day add up to big changes.',
+  'You don’t have to be perfect. Just keep showing up.',
+  'Today’s effort is tomorrow’s habit.',
+  'A little today beats a lot someday.',
+  'Every check mark is a promise you kept to yourself.',
+  'Slow days still count. Keep going.',
+  'Be proud of how far you have come.',
+  'One more day, one more step.',
+  'Your future self will thank you for today.',
+  'Start small, stay steady, finish strong.',
+];
+
+const TIPS = [
+  ['✅', 'Tap the round button on a habit to check it off. If you do it several times a day, each tap adds one.'],
+  ['🎯', 'Tap a habit to open its counter. <strong>Add</strong> lets you type a bigger number in one go.'],
+  ['📅', 'Forgot a day? Pick it in the row of days on Today, or tap it in the habit’s <strong>Stat</strong> calendar.'],
+  ['🙂', 'Tap the face at the top of Today to save your mood and a note about the day.'],
+  ['📝', 'Use <strong>Memo</strong> on a habit to write how it went. Turn on “Write a memo after finishing” to be asked every time.'],
+  ['🏷️', 'Give habits a time of day or a group, then use the pink <strong>All</strong> button to show only those.'],
+  ['💾', 'Your habits live only on this device. Download a backup from <strong>Me</strong> now and then.'],
+];
+
+const svg = (body, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 const ICON_SVG = {
-  tick: '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
-  right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
-  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
-  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  tick: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 2.8),
+  left: svg('<path d="M15 6l-6 6 6 6"/>', 2.2),
+  right: svg('<path d="M9 6l6 6-6 6"/>', 2.2),
+  down: svg('<path d="M7 10l5 5 5-5"/>', 2.2),
+  plus: svg('<path d="M12 5v14M5 12h14"/>', 2.4),
+  close: svg('<path d="M6 6l12 12M18 6L6 18"/>', 2.2),
+  more: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  smile: svg('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2"/><path d="M9.2 9.6h.01M14.8 9.6h.01" stroke-width="3"/>'),
+  swap: svg('<path d="M7 8h11l-3-3M17 16H6l3 3"/>'),
+  pencil: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
+  cal: svg('<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>'),
+  grid: svg('<rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/>'),
+  check: svg('<rect x="5" y="4" width="14" height="16" rx="3"/><path d="M9 12l2 2 4-4"/>'),
+  flame: svg('<path d="M12 21c-3.6 0-6-2.5-6-5.9 0-3.1 2.2-5 3.6-6.9.4 1.5 1.2 2.6 2.3 3.1.2-2.6 1.6-5.1 3.7-7.1.3 2.9 3.4 5.2 3.4 9.6 0 4.4-2.6 7.2-7 7.2z"/>'),
+  medal: svg('<circle cx="12" cy="14.5" r="5.5"/><path d="M9 3.5l2.2 5.6M15 3.5l-2.2 5.6M12 12.5v4"/>'),
+  bars: svg('<path d="M6 20v-8M12 20V5M18 20v-5"/>', 2.4),
+  sum: svg('<path d="M17 5H7l5.5 7L7 19h10"/>'),
+  avg: svg('<path d="M4 17l5-5 4 3 7-8"/>'),
+  pie: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12h8.5"/>'),
+  memo: svg('<rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 8.5h6M9 12.5h6M9 16.5h3.5"/>'),
 };
 
 /* ---------- 2. Date helpers ---------- */
@@ -65,6 +122,17 @@ const fmtTime = (hm) => {
   const [h, m] = hm.split(':').map(Number);
   return new Date(2023, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 };
+// Months are written "YYYY-MM".
+const monthOf = (d) => keyOf(d).slice(0, 7);
+const monthStart = (mk) => parseKey(`${mk}-01`);
+const monthEnd = (mk) => {
+  const d = monthStart(mk);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+};
+const shiftMonth = (mk, n) => {
+  const d = monthStart(mk);
+  return monthOf(new Date(d.getFullYear(), d.getMonth() + n, 1));
+};
 
 function startOfWeek(d) {
   const diff = (d.getDay() - state.settings.weekStart + 7) % 7;
@@ -80,11 +148,19 @@ function dayName(dow, style = 'short') {
   // 2023-01-01 was a Sunday, so add `dow` days to get that weekday.
   return fmt(new Date(2023, 0, 1 + dow), { weekday: style });
 }
+const dayCode = (dow) => dayName(dow).slice(0, 3).toUpperCase(); // "MON"
 
 /* ---------- 3. Saving and loading ---------- */
 
 function defaultState() {
-  return { version: 2, habits: [], log: {}, journal: {}, settings: { theme: 'system', weekStart: 1 } };
+  return {
+    version: 3,
+    habits: [],
+    log: {},
+    memos: {},
+    journal: {},
+    settings: { theme: 'dark', weekStart: 1, name: '', avatar: '🙂' },
+  };
 }
 
 function clampInt(v, min, max, fallback) {
@@ -92,14 +168,17 @@ function clampInt(v, min, max, fallback) {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 }
 
-/** Cleans up saved or imported data so the app never breaks on bad input. */
+const cleanText = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+/** Cleans up saved or imported data so the app never breaks on bad input. Older backups still load. */
 function normalize(raw) {
   const s = defaultState();
   if (!raw || typeof raw !== 'object') return s;
 
   if (Array.isArray(raw.habits)) {
+    const seen = new Set();
     s.habits = raw.habits
-      .filter((h) => h && h.id && h.name)
+      .filter((h) => h && h.id && h.name && !seen.has(String(h.id)) && seen.add(String(h.id)))
       .map((h) => {
         const days = Array.isArray(h.days)
           ? [...new Set(h.days.map(Number))].filter((d) => d >= 0 && d <= 6).sort()
@@ -107,12 +186,18 @@ function normalize(raw) {
         return {
           id: String(h.id),
           name: String(h.name).slice(0, 60),
+          desc: cleanText(h.desc, 40), // short line under the name, e.g. "Gym"
           icon: typeof h.icon === 'string' && h.icon ? h.icon.slice(0, 8) : '✅',
-          color: /^#[0-9a-f]{6}$/i.test(h.color) ? h.color : COLORS[0],
-          goal: clampInt(h.goal, 1, 50, 1),
+          color: /^#[0-9a-f]{6}$/i.test(h.color) ? h.color.toLowerCase() : NEW_COLORS[0],
+          goal: clampInt(h.goal, 1, MAX_COUNT, 1),
+          unit: cleanText(h.unit, 12), // e.g. "glasses"; empty means "times"
           days: days.length ? days : ALL_DAYS.slice(),
-          createdAt: isKey(h.createdAt) ? h.createdAt : todayKey(),
+          time: TIMES.some(([t]) => t === h.time) ? h.time : 'any',
+          group: cleanText(h.group, 24),
           reminder: TIME_RE.test(h.reminder) ? h.reminder : '', // "" means no reminder
+          memo: h.memo === true, // ask for a memo after finishing
+          archived: h.archived === true,
+          createdAt: isKey(h.createdAt) ? h.createdAt : todayKey(),
         };
       });
   }
@@ -123,10 +208,26 @@ function normalize(raw) {
       if (!src || typeof src !== 'object') continue;
       const clean = {};
       for (const [k, v] of Object.entries(src)) {
-        const n = clampInt(v, 0, 50, 0);
+        const n = clampInt(v, 0, MAX_COUNT, 0);
         if (isKey(k) && n > 0) clean[k] = n;
       }
       s.log[h.id] = clean;
+    }
+  }
+
+  // Memos for each habit and day: { habitId: { "YYYY-MM-DD": { text, emoji } } }
+  if (raw.memos && typeof raw.memos === 'object') {
+    for (const h of s.habits) {
+      const src = raw.memos[h.id];
+      if (!src || typeof src !== 'object') continue;
+      const clean = {};
+      for (const [k, v] of Object.entries(src)) {
+        if (!isKey(k) || !v || typeof v !== 'object') continue;
+        const text = typeof v.text === 'string' ? v.text.trim().slice(0, 1000) : '';
+        const emoji = typeof v.emoji === 'string' ? v.emoji.slice(0, 8) : '';
+        if (text || emoji) clean[k] = { text, emoji };
+      }
+      if (Object.keys(clean).length) s.memos[h.id] = clean;
     }
   }
 
@@ -145,6 +246,8 @@ function normalize(raw) {
   const st = raw.settings || {};
   if (['system', 'light', 'dark'].includes(st.theme)) s.settings.theme = st.theme;
   if (st.weekStart === 0 || st.weekStart === 1) s.settings.weekStart = st.weekStart;
+  s.settings.name = cleanText(st.name, 30);
+  if (typeof st.avatar === 'string' && st.avatar.trim()) s.settings.avatar = st.avatar.trim().slice(0, 8);
   return s;
 }
 
@@ -159,6 +262,7 @@ function load() {
 }
 
 function save() {
+  startCache.clear();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (err) {
@@ -166,16 +270,25 @@ function save() {
   }
 }
 
+const startCache = new Map(); // first counted day of each habit, worked out once
 let state = load();
 
 // Things about the screen that don't need saving.
 const ui = {
-  tab: 'today', // today, habits, stats or me
-  date: todayKey(), // the day shown on the Today screen
-  detail: null, // id of the habit being viewed, or null
-  month: null, // "YYYY-MM" shown in the habit calendar
-  range: 'week', // Stats: week, month or year
-  anchor: todayKey(), // Stats: a day inside the week, month or year being shown
+  tab: 'today', // today, stats, habits or me
+  date: todayKey(), // the day shown on Today and in a habit's counter
+  detail: null, // id of the habit whose counter is open, or null
+  stat: false, // true when that habit's Stat page is open
+  month: todayKey().slice(0, 7), // month in the habit's Stat calendar ("YYYY-MM")
+  year: new Date().getFullYear(), // year in the habit's Yearly status
+  trend: 'week', // habit Stat chart: week, month or year
+  memosAll: false, // show every memo instead of the latest three
+  filter: 'all', // Today: "all", "time:morning" or "group:Name"
+  pick: 'all', // Stats: "all" or one habit's id
+  smonth: todayKey().slice(0, 7), // Stats: month shown
+  yearView: false, // Stats: show the whole year instead of one month
+  rateYear: false, // Stats: rate for the year instead of the month
+  menu: null, // which small menu is open: filter, pick or habit
   confirm: null, // which delete button is waiting for a second tap
   editing: null, // id of the habit open in the edit sheet
 };
@@ -185,7 +298,9 @@ const ui = {
 const countOf = (h, k) => (state.log[h.id] && state.log[h.id][k]) || 0;
 const isDone = (h, k) => countOf(h, k) >= h.goal;
 const findHabit = (id) => state.habits.find((h) => h.id === id) || null;
+const active = () => state.habits.filter((h) => !h.archived);
 const entryOf = (k) => state.journal[k] || {};
+const memoOf = (h, k) => (state.memos[h.id] && state.memos[h.id][k]) || null;
 
 /** Saves the mood and/or note for a day. Empty values are removed. */
 function setJournal(k, patch) {
@@ -197,10 +312,21 @@ function setJournal(k, patch) {
   save();
 }
 
+/** Saves a habit's memo for a day. An empty memo is removed. */
+function setMemo(h, k, memo) {
+  const all = state.memos[h.id] || (state.memos[h.id] = {});
+  if (memo && (memo.text || memo.emoji)) all[k] = memo;
+  else delete all[k];
+  if (!Object.keys(all).length) delete state.memos[h.id];
+  save();
+}
+
 /** First day a habit counts from: the day it was made, or an earlier logged day. */
 function startKey(h) {
+  if (startCache.has(h.id)) return startCache.get(h.id);
   let s = h.createdAt;
   for (const k of Object.keys(state.log[h.id] || {})) if (k < s) s = k;
+  startCache.set(h.id, s);
   return s;
 }
 
@@ -211,7 +337,7 @@ function isDue(h, d, start = startKey(h)) {
 
 function setCount(h, k, n) {
   const log = state.log[h.id] || (state.log[h.id] = {});
-  if (n > 0) log[k] = n;
+  if (n > 0) log[k] = Math.min(n, MAX_COUNT);
   else delete log[k];
   save();
 }
@@ -245,72 +371,70 @@ function bestStreak(h) {
   return best;
 }
 
-/** Share of scheduled days done over the last `days` days (today counts only once done). */
-function rate(h, days = 30) {
-  const start = startKey(h);
-  const tk = todayKey();
-  let due = 0;
-  let done = 0;
-  for (let i = 0; i < days; i++) {
-    const d = addDays(new Date(), -i);
-    const k = keyOf(d);
-    if (!isDue(h, d, start)) continue;
-    if (isDone(h, k)) {
-      due++;
-      done++;
-    } else if (k !== tk) due++;
-  }
-  return { due, done, pct: due ? done / due : null };
-}
-
 const totalDone = (h) => Object.keys(state.log[h.id] || {}).filter((k) => isDone(h, k)).length;
 
-/** 0..1 progress across every habit due on a day, or null when nothing was due. */
-function dayProgress(d) {
-  const due = state.habits.filter((h) => isDue(h, d));
-  if (!due.length) return null;
+/** 0..1 progress for one day across some habits, or null when nothing was due. */
+function progressOf(list, d) {
   const k = keyOf(d);
-  return due.reduce((sum, h) => sum + Math.min(countOf(h, k) / h.goal, 1), 0) / due.length;
+  const due = list.filter((h) => isDue(h, d));
+  if (due.length) return due.reduce((sum, h) => sum + Math.min(countOf(h, k) / h.goal, 1), 0) / due.length;
+  // One habit done on a day it wasn't scheduled still shows.
+  if (list.length === 1 && countOf(list[0], k)) return Math.min(countOf(list[0], k) / list[0].goal, 1);
+  return null;
 }
+const dayProgress = (d) => progressOf(active(), d);
 
-/** Numbers for the Weekly report: share of scheduled days met, completions, perfect days. */
-function weekSummary(days) {
+/**
+ * Numbers for some habits between two dates (only up to today):
+ * rate = share of scheduled days done (today counts only once done), done = days done,
+ * volume = sum of all counts, perfect = days when every scheduled habit was done.
+ */
+function periodStats(list, from, to) {
   const tk = todayKey();
+  const end = keyOf(to) < tk ? keyOf(to) : tk;
+  const starts = new Map(list.map((h) => [h.id, startKey(h)]));
   let due = 0;
   let met = 0;
-  let total = 0;
+  let done = 0;
+  let volume = 0;
   let perfect = 0;
-  for (const d of days) {
+  let days = 0;
+  for (let d = new Date(from); keyOf(d) <= end; d = addDays(d, 1)) {
     const k = keyOf(d);
-    if (k > tk) continue;
-    if (dayProgress(d) === 1) perfect++;
-    for (const h of state.habits) {
-      const done = isDone(h, k);
-      if (done) total++;
-      if (!isDue(h, d)) continue;
-      if (done) {
+    days++;
+    let dayDue = 0;
+    let dayMet = 0;
+    for (const h of list) {
+      const c = countOf(h, k);
+      volume += c;
+      const ok = c >= h.goal;
+      if (ok) done++;
+      if (!isDue(h, d, starts.get(h.id))) continue;
+      dayDue++;
+      if (ok) {
+        dayMet++;
         due++;
         met++;
       } else if (k !== tk) due++;
     }
+    if (dayDue && dayMet === dayDue) perfect++;
   }
-  return { met: due ? met / due : null, total, perfect };
+  return { rate: due ? met / due : null, done, volume, perfect, days };
 }
 
-/** Text colour (white or dark) that is easy to read on a habit's colour. */
+/** Text colour (white or dark) that is easy to read on a colour. */
 function inkOn(hex) {
   const lin = (i) => {
     const v = parseInt(hex.slice(i, i + 2), 16) / 255;
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   };
   const lum = 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5);
-  return 1.05 / (lum + 0.05) >= 3 ? '#ffffff' : '#1e1e24';
+  return 1.05 / (lum + 0.05) >= 3 ? '#ffffff' : '#1c1c1e';
 }
 
-/** CSS variables for a habit: its colour, text colour on it, and tick colour on white. */
+/** CSS variables for a habit: its colour and the text colour that reads well on it. */
 function habitVars(h) {
-  const ink = inkOn(h.color);
-  return `--c:${h.color};--ink:${ink};--tc:${ink === '#ffffff' ? h.color : '#1e1e24'}`;
+  return `--c:${h.color};--ink:${inkOn(h.color)}`;
 }
 
 function scheduleText(h) {
@@ -323,6 +447,7 @@ function scheduleText(h) {
 
 const pct = (p) => `${Math.round(p * 100)}%`;
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const fmtNum = (x) => String(Math.round(x * 100) / 100);
 
 /* ---------- 5. Screens ---------- */
 
@@ -334,37 +459,46 @@ const view = document.getElementById('view');
 
 function render() {
   // Remember which button had keyboard focus so it can be focused again after redrawing.
-  const active = document.activeElement;
+  const focused = document.activeElement;
   let focusSel = null;
-  if (active && view.contains(active) && active.dataset.action) {
-    focusSel = `[data-action="${active.dataset.action}"]`;
-    if (active.dataset.id) focusSel += `[data-id="${CSS.escape(active.dataset.id)}"]`;
-    if (active.dataset.key) focusSel += `[data-key="${active.dataset.key}"]`;
-    if (active.dataset.range) focusSel += `[data-range="${active.dataset.range}"]`;
-    if (active.dataset.v) focusSel += `[data-v="${active.dataset.v}"]`;
+  if (focused && view.contains(focused) && focused.dataset.action) {
+    focusSel = `[data-action="${focused.dataset.action}"]`;
+    for (const attr of ['id', 'key', 'value', 'menu', 'delta']) {
+      if (focused.dataset[attr] !== undefined) focusSel += `[data-${attr}="${CSS.escape(focused.dataset[attr])}"]`;
+    }
   }
 
   const habit = ui.detail && findHabit(ui.detail);
-  if (ui.detail && !habit) ui.detail = null;
+  if (ui.detail && !habit) {
+    ui.detail = null;
+    ui.stat = false;
+  }
 
-  if (habit) view.innerHTML = renderDetail(habit);
-  else if (ui.tab === 'habits') view.innerHTML = renderHabits();
+  if (habit) view.innerHTML = ui.stat ? renderHabitStats(habit) : renderCounter(habit);
   else if (ui.tab === 'stats') view.innerHTML = renderStats();
+  else if (ui.tab === 'habits') view.innerHTML = renderHabits();
   else if (ui.tab === 'me') view.innerHTML = renderMe();
   else view.innerHTML = renderToday();
 
-  document.body.classList.toggle('tinted', ui.tab === 'me' && !habit);
+  document.body.dataset.screen = habit ? (ui.stat ? 'habit-stat' : 'counter') : ui.tab;
   document.querySelectorAll('.tab').forEach((b) => {
     const on = b.dataset.tab === ui.tab;
     b.classList.toggle('active', on);
     if (on) b.setAttribute('aria-current', 'page');
     else b.removeAttribute('aria-current');
+    if (b.dataset.tab === 'today') {
+      // On Today, the Today button turns into a pink + for adding a habit.
+      const addMode = on && !habit;
+      b.classList.toggle('add-mode', addMode);
+      b.setAttribute('aria-label', addMode ? 'Add a new habit' : 'Today');
+      b.title = addMode ? 'Add a new habit' : 'Today';
+    }
   });
 
-  // Keep the chosen day in view in the date strip.
+  // Keep the chosen day in view in the row of days (today sits at the right end).
   const strip = view.querySelector('.strip');
-  const chosen = strip && strip.querySelector('[aria-current="date"]');
-  if (chosen) strip.scrollLeft = chosen.offsetLeft - (strip.clientWidth - chosen.offsetWidth) / 2;
+  const chosen = strip && strip.querySelector('.sel');
+  if (chosen) strip.scrollLeft = chosen.offsetLeft + chosen.offsetWidth - strip.clientWidth + 6;
 
   if (focusSel) {
     const el = view.querySelector(focusSel);
@@ -372,288 +506,204 @@ function render() {
   }
 }
 
-/** Top bar: optional button on the left, title in the middle, button on the right. */
-function topbar(title, { left = '', right = '', sub = '' } = {}) {
+/** Top bar: buttons on the left, title in the middle, buttons on the right, then an open menu. */
+function topBar(title, left = '', right = '', extra = '') {
   return `
-    <header class="topbar">
-      <div class="tb-side">${left}</div>
-      <div class="tb-title"><h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ''}</div>
-      <div class="tb-side end">${right}</div>
+    <header class="top">
+      <div class="top-side">${left}</div>
+      <h1 class="top-title">${title}</h1>
+      <div class="top-side end">${right}</div>
+      ${extra}
     </header>`;
 }
 
-const addButton = `<button class="add-btn" data-action="add" aria-label="Add a new habit">${ICON_SVG.plus}</button>`;
+const roundBtn = (action, icon, label, attrs = '') =>
+  `<button class="round" data-action="${action}" aria-label="${esc(label)}" title="${esc(label)}" ${attrs}>${icon}</button>`;
+const tipButton = () => '<button class="fab-tip" data-action="tips" aria-label="Tips" title="Tips"><span aria-hidden="true">💡</span></button>';
+
+/** A small menu. Items: { action, label, attrs, icon, on, danger }. */
+function popover(items, place) {
+  return `
+    <div class="popover ${place}" role="menu">
+      ${items.map((i) => `
+        <button role="menuitem" class="${i.danger ? 'danger' : ''}${i.on ? ' on' : ''}" data-action="${i.action}" ${i.attrs || ''}>
+          ${i.icon ? `<span class="pi" aria-hidden="true">${i.icon}</span>` : ''}<span class="pl">${esc(i.label)}</span>${i.on ? ICON_SVG.tick : ''}
+        </button>`).join('')}
+    </div>`;
+}
 
 /* Today */
+
+function filterLabel() {
+  if (ui.filter.startsWith('time:')) {
+    const t = TIMES.find(([id]) => id === ui.filter.slice(5));
+    return t ? t[1] : 'All';
+  }
+  if (ui.filter.startsWith('group:')) return ui.filter.slice(6);
+  return 'All';
+}
+
+function matchesFilter(h) {
+  if (ui.filter.startsWith('time:')) return h.time === ui.filter.slice(5);
+  if (ui.filter.startsWith('group:')) return h.group === ui.filter.slice(6);
+  return true;
+}
+
+const groupNames = (list = active()) => [...new Set(list.map((h) => h.group).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+function filterMenu() {
+  const items = [{ action: 'filter', attrs: 'data-value="all"', label: 'All habits', on: ui.filter === 'all' }];
+  for (const [t, label, icon] of TIMES) {
+    items.push({ action: 'filter', attrs: `data-value="time:${t}"`, label, icon, on: ui.filter === `time:${t}` });
+  }
+  for (const g of groupNames()) {
+    items.push({ action: 'filter', attrs: `data-value="group:${esc(g)}"`, label: g, icon: '🏷️', on: ui.filter === `group:${g}` });
+  }
+  return popover(items, 'pop-left');
+}
 
 function renderToday() {
   const tk = todayKey();
   const sel = parseKey(ui.date);
   const isToday = ui.date === tk;
   const isYesterday = ui.date === keyOf(addDays(new Date(), -1));
-  const title = isToday ? 'Today' : isYesterday ? 'Yesterday' : fmt(sel, { month: 'long', day: 'numeric' });
+  const title = isToday ? 'Today' : isYesterday ? 'Yesterday' : fmt(sel, { weekday: 'short', month: 'short', day: 'numeric' });
+  const mood = entryOf(ui.date).mood;
+  const moodBtn = `<button class="round mood-btn" data-action="day" aria-label="${esc(`Mood and note for ${title}`)}" title="Mood and note">${mood ? `<span class="emo" aria-hidden="true">${MOODS[mood - 1].emoji}</span>` : ICON_SVG.smile}</button>`;
+  const list = active();
 
-  if (!state.habits.length) {
-    return `${topbar('Today', { right: addButton })}
+  if (!list.length) {
+    const archivedOnly = state.habits.length > 0;
+    return `${topBar('Today', '', moodBtn)}
       <section class="empty">
-        <div class="empty-art" aria-hidden="true"><span>🚀</span></div>
-        <h2>No habits yet</h2>
-        <p class="muted">Tap <strong>+</strong> to add your first habit, or start with one of these.</p>
+        <div class="empty-art" aria-hidden="true">🌱</div>
+        <h2>${archivedOnly ? 'No active habits' : 'No habits yet'}</h2>
+        <p>${archivedOnly ? 'Your habits are archived. Restore them from the habits list, or add a new one.' : 'Tap the pink <strong>+</strong> below to add your first habit, or start with one of these.'}</p>
         <div class="chips">
           ${SUGGESTIONS.map((s, i) => `<button class="chip" data-action="suggest" data-i="${i}">${s.icon} ${esc(s.name)}</button>`).join('')}
         </div>
-      </section>`;
+      </section>
+      ${tipButton()}`;
   }
 
-  const due = state.habits.filter((h) => isDue(h, sel));
-  const resting = state.habits.length - due.length;
-  const done = due.filter((h) => isDone(h, ui.date)).length;
-  const sub = due.length ? `${done} of ${due.length} done` : fmt(sel, { weekday: 'long' });
-  const left = isToday ? '' : '<button class="pill" data-action="go-today">Today</button>';
+  const shown = list.filter(matchesFilter);
+  const due = shown.filter((h) => isDue(h, sel));
+  const resting = shown.length - due.length;
+  const filterBtn = `
+    <button class="filter-pill" data-action="menu" data-menu="filter" aria-haspopup="true" aria-expanded="${ui.menu === 'filter'}" aria-label="${esc(`Show: ${filterLabel()}`)}">
+      <span>${esc(filterLabel())}</span>${ICON_SVG.down}
+    </button>`;
 
-  return `${topbar(title, { left, right: addButton, sub })}
+  return `${topBar(esc(title), filterBtn, moodBtn, ui.menu === 'filter' ? filterMenu() : '')}
     ${dateStrip()}
     ${due.length
-      ? `<ul class="bars">${due.map((h) => habitBar(h, ui.date)).join('')}</ul>`
-      : '<p class="empty-note">Nothing scheduled for this day. Enjoy the rest! 🌿</p>'}
-    ${resting ? `<p class="muted small center rest-note">${plural(resting, 'habit')} not scheduled ${isToday ? 'today' : 'this day'}.</p>` : ''}
-    ${journalCard(ui.date)}`;
+      ? `<ul class="hlist">${due.map((h) => habitCard(h, ui.date)).join('')}</ul>`
+      : `<p class="empty-note">${ui.filter === 'all' ? 'Nothing scheduled for this day. Enjoy the rest! 🌿' : 'No habits here for this day.'}</p>`}
+    ${resting ? `<p class="rest-note">${plural(resting, 'habit')} not scheduled ${isToday ? 'today' : 'this day'}</p>` : ''}
+    ${isToday ? '' : '<button class="link-btn" data-action="go-today">Back to today</button>'}
+    ${tipButton()}`;
 }
 
-/** Mood and note for the chosen day. */
-function journalCard(k) {
-  const e = entryOf(k);
-  const moods = MOODS.map((m, i) => {
-    const on = e.mood === i + 1;
-    return `<button class="mood${on ? ' on' : ''}" data-action="mood" data-v="${i + 1}" aria-pressed="${on}" aria-label="${m.label}" title="${m.label}">${m.emoji}</button>`;
-  }).join('');
-  return `
-    <section class="journal" aria-labelledby="j-title">
-      <div class="j-top">
-        <h2 id="j-title">${k === todayKey() ? 'How was your day?' : 'How was this day?'}</h2>
-        ${e.mood ? `<span class="j-mood">${MOODS[e.mood - 1].label}</span>` : ''}
-      </div>
-      <div class="moods" role="group" aria-label="Mood">${moods}</div>
-      <button class="j-note" data-action="note">
-        ${e.note ? `<span class="j-text">${esc(e.note)}</span>` : '<span class="muted">📝 Add a note about your day…</span>'}
-      </button>
-    </section>`;
-}
-
-/** A scrolling row of days: the last five weeks up to the end of this week. */
+/** A row of days: the last 30 days up to today, with a ring that fills as the day's habits get done. */
 function dateStrip() {
   const tk = todayKey();
-  const today = parseKey(tk);
-  const lastKey = keyOf(addDays(startOfWeek(today), 6));
-  const earliest = keyOf(addDays(today, -34));
+  const earliest = keyOf(addDays(parseKey(tk), -29));
   let d = parseKey(ui.date < earliest ? ui.date : earliest);
   let cells = '';
-  for (; keyOf(d) <= lastKey; d = addDays(d, 1)) {
+  for (; keyOf(d) <= tk; d = addDays(d, 1)) {
     const k = keyOf(d);
-    const future = k > tk;
-    const p = future ? null : dayProgress(d);
+    const p = dayProgress(d);
     const cls = ['sd'];
     if (k === ui.date) cls.push('sel');
     if (k === tk) cls.push('today');
-    if (future) cls.push('future');
-    const fill = p === 1 ? ' full' : p > 0 ? ' some' : '';
+    if (p === 1) cls.push('full');
     const label = `${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}${p === null ? '' : `, ${pct(p)} done`}`;
     cells += `
-      <button class="${cls.join(' ')}" data-action="${future ? 'future-day' : 'pick-day'}" data-key="${k}" aria-label="${esc(label)}"${k === ui.date ? ' aria-current="date"' : ''}>
+      <button class="${cls.join(' ')}" data-action="pick-day" data-key="${k}" aria-label="${esc(label)}"${k === ui.date ? ' aria-current="date"' : ''}>
         <span class="sd-dow" aria-hidden="true">${esc(fmt(d, { weekday: 'short' }).slice(0, 2))}</span>
-        <span class="sd-num${fill}" aria-hidden="true">${d.getDate()}</span>
+        <span class="sd-ring" style="--p:${(p || 0).toFixed(3)}" aria-hidden="true"><b>${d.getDate()}</b></span>
       </button>`;
   }
   return `<div class="strip" role="group" aria-label="Pick a day">${cells}</div>`;
 }
 
-/** One habit as a bar that fills with its colour as you make progress. */
-function habitBar(h, k) {
+/** One habit as a card tinted with its colour. It fills as you make progress. */
+function habitCard(h, k) {
   const c = countOf(h, k);
   const done = c >= h.goal;
   const p = Math.min(c / h.goal, 1);
   const streak = currentStreak(h);
-  const parts = [];
-  if (h.goal > 1) parts.push(`${Math.min(c, h.goal)}/${h.goal} times`);
-  parts.push(streak ? `🔥 ${plural(streak, 'day')}` : scheduleText(h));
-  if (h.reminder && !done) parts.push(`⏰ ${fmtTime(h.reminder)}`);
+  const meta = h.desc ? esc(h.desc) : streak ? `🔥 ${plural(streak, 'day')}` : h.reminder ? `⏰ ${esc(fmtTime(h.reminder))}` : '';
   const label = done
-    ? `${h.name}: done. Tap to undo.`
-    : h.goal > 1 ? `${h.name}: ${c} of ${h.goal}. Tap to add one.` : `${h.name}: not done. Tap to mark done.`;
-  const mark = done ? ICON_SVG.tick : h.goal > 1 ? '<b>+1</b>' : '';
-
+    ? (h.goal > 1 ? `${h.name}: done. Open it to change the count.` : `${h.name}: done. Tap to undo.`)
+    : h.goal > 1 ? `${h.name}: ${c} of ${h.goal}. Tap to add one.` : `${h.name}: not done. Tap to check it off.`;
   return `
-    <li class="hb${done ? ' done' : ''}" style="${habitVars(h)};--p:${p.toFixed(3)}">
-      <button class="hb-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(h.name)} details">
-        <span class="hb-icon" aria-hidden="true">${esc(h.icon)}</span>
-        <span class="hb-body"><span class="hb-name">${esc(h.name)}</span><span class="hb-meta">${esc(parts.join(' · '))}</span></span>
+    <li class="hc${done ? ' done' : ''}" style="${habitVars(h)};--p:${p.toFixed(3)}">
+      <button class="hc-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(`${h.name}, ${c} of ${h.goal}. Open counter.`)}">
+        <span class="hc-icon" aria-hidden="true">${esc(h.icon)}</span>
+        <span class="hc-body">
+          <span class="hc-name">${esc(h.name)}</span>
+          <span class="hc-meta"><span class="hc-count">${c}/${h.goal}</span>${meta ? `<span class="hc-desc">${meta}</span>` : ''}</span>
+        </span>
       </button>
-      <button class="hb-check" data-action="tick" data-id="${esc(h.id)}" aria-pressed="${done}" aria-label="${esc(label)}"><span>${mark}</span></button>
+      <button class="hc-btn" data-action="tick" data-id="${esc(h.id)}" aria-pressed="${done}" aria-label="${esc(label)}">${done || h.goal === 1 ? ICON_SVG.tick : ICON_SVG.plus}</button>
     </li>`;
 }
 
-/* All habits */
+/* A habit's counter page */
 
-function renderHabits() {
-  const head = topbar('All habits', { right: addButton, sub: state.habits.length ? plural(state.habits.length, 'habit') : '' });
-  if (!state.habits.length) {
-    return `<div class="narrow">${head}<p class="empty-note">No habits yet. Tap <strong>+</strong> to add one.</p></div>`;
-  }
-  const rows = state.habits.map((h) => {
-    const s = currentStreak(h);
-    return `
-      <li>
-        <button class="lrow" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}">
-          <span class="h-icon" aria-hidden="true">${esc(h.icon)}</span>
-          <span class="lr-body">
-            <span class="lr-name">${esc(h.name)}</span>
-            <span class="lr-meta">${esc(scheduleText(h))}${h.goal > 1 ? ` · ${h.goal} times a day` : ''}${h.reminder ? ` · ⏰ ${esc(fmtTime(h.reminder))}` : ''}</span>
-          </span>
-          ${s ? `<span class="lr-streak" aria-label="${esc(`${plural(s, 'day')} in a row`)}">🔥 ${s}</span>` : ''}
-          <span class="lr-chev" aria-hidden="true">${ICON_SVG.right}</span>
-        </button>
-      </li>`;
-  }).join('');
-  return `<div class="narrow">${head}<ul class="lgroup">${rows}</ul></div>`;
-}
-
-/* Habit details */
-
-function renderDetail(h) {
-  const tk = todayKey();
-  const cur = currentStreak(h);
-  const best = bestStreak(h);
-  const r = rate(h, 30);
-  const total = totalDone(h);
-  const start = startKey(h);
-
-  const [y, m] = ui.month.split('-').map(Number);
-  const first = new Date(y, m - 1, 1);
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const lead = (first.getDay() - state.settings.weekStart + 7) % 7;
-  const atLatestMonth = ui.month >= tk.slice(0, 7);
-
-  let cells = weekOrder().map((d) => `<span class="dow">${esc(dayName(d, 'narrow'))}</span>`).join('');
-  cells += '<span></span>'.repeat(lead);
-  for (let i = 1; i <= daysInMonth; i++) {
-    const d = new Date(y, m - 1, i);
-    const k = keyOf(d);
-    const c = countOf(h, k);
-    const scheduled = h.days.includes(d.getDay());
-    let cls = '';
-    let state_ = 'not scheduled';
-    if (k > tk) { cls = 'future'; state_ = 'upcoming'; }
-    else if (c >= h.goal) { cls = 'done'; state_ = 'done'; }
-    else if (c > 0) { cls = 'part'; state_ = `${c} of ${h.goal}`; }
-    else if (scheduled && k >= start && k < tk) { cls = 'miss'; state_ = 'missed'; }
-    else if (scheduled) { state_ = 'not done'; }
-    else cls = 'off';
-    if (k === tk) cls += ' today';
-    const label = `${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}: ${state_}`;
-    cells += `<button class="${cls.trim()}" data-action="cal" data-id="${esc(h.id)}" data-key="${k}" ${k > tk ? 'disabled' : ''} aria-label="${esc(label)}">${i}</button>`;
-  }
-
+function renderCounter(h) {
+  const k = ui.date;
+  const c = countOf(h, k);
+  const done = c >= h.goal;
+  const p = Math.min(c / h.goal, 1);
+  const R = 116;
+  const C = 2 * Math.PI * R;
   const armed = ui.confirm === `delete:${h.id}`;
-  const days = (n) => `<small>${n === 1 ? 'day' : 'days'}</small>`;
+  const id = `data-id="${esc(h.id)}"`;
+  const menu = ui.menu === 'habit' ? popover([
+    { action: 'edit', attrs: id, label: 'Edit' },
+    ...(h.reminder ? [{ action: 'ics', attrs: id, label: 'Add reminder to calendar' }] : []),
+    { action: 'archive', attrs: id, label: h.archived ? 'Restore' : 'Archive' },
+    { action: 'delete', attrs: id, label: armed ? 'Tap again to delete for good' : 'Delete', danger: true },
+  ], 'pop-right') : '';
+  const unit = h.unit ? ` ${esc(h.unit)}` : '';
 
   return `
-    <div class="narrow">
-      <div class="detail-head">
-        <button class="back" data-action="back">${ICON_SVG.left}<span>Back</span></button>
-        <button class="pill" data-action="edit" data-id="${esc(h.id)}">Edit</button>
+    <div class="counter" style="${habitVars(h)}">
+      ${topBar(`<span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}`,
+        roundBtn('back', ICON_SVG.left, 'Back'),
+        roundBtn('menu', ICON_SVG.more, 'More options', `data-menu="habit" aria-haspopup="true" aria-expanded="${ui.menu === 'habit'}"`),
+        menu)}
+      ${k === todayKey() ? '' : `<p class="cnt-day">${esc(fmt(parseKey(k), { weekday: 'long', month: 'long', day: 'numeric' }))}</p>`}
+      ${h.archived ? '<p class="cnt-day">Archived. Use ••• to restore it to Today.</p>' : ''}
+      <div class="ring-box">
+        <svg class="big-ring" viewBox="0 0 260 260" aria-hidden="true">
+          <circle cx="130" cy="130" r="${R}" class="track"/>
+          ${p > 0 ? `<circle cx="130" cy="130" r="${R}" class="prog" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 130 130)"/>` : ''}
+        </svg>
+        <div class="ring-in">
+          <span class="ring-emoji" aria-hidden="true">${esc(h.icon)}</span>
+          <button class="ring-num" data-action="keypad" ${id} aria-label="${esc(`${c} of ${h.goal}${h.unit ? ` ${h.unit}` : ''}. Tap to type a number.`)}">${c}</button>
+          <span class="ring-goal" aria-hidden="true">/${h.goal}${unit}</span>
+        </div>
+        <button class="ring-plus" data-action="add-one" ${id} aria-label="Add one">${ICON_SVG.plus}</button>
       </div>
-      <section class="hero" style="${habitVars(h)}">
-        <span class="h-icon" aria-hidden="true">${esc(h.icon)}</span>
-        <div>
-          <h1>${esc(h.name)}</h1>
-          <p class="muted">${esc(scheduleText(h))}${h.goal > 1 ? ` · ${h.goal} times a day` : ''}</p>
-        </div>
-      </section>
-
-      <div class="tiles">
-        <div class="tile k1"><div class="value">${cur}${days(cur)}</div><div class="label">Current streak</div></div>
-        <div class="tile k2"><div class="value">${best}${days(best)}</div><div class="label">Best streak</div></div>
-        <div class="tile k3"><div class="value">${r.pct === null ? '–' : pct(r.pct)}</div><div class="label">Last 30 days</div><div class="sub">${r.done} of ${r.due} scheduled days</div></div>
-        <div class="tile k4"><div class="value">${total}</div><div class="label">Total done</div></div>
+      ${h.desc ? `<p class="cnt-desc">${esc(h.desc)}</p>` : ''}
+      <div class="cnt-actions">
+        <button class="add-pill" data-action="keypad" ${id}>Add</button>
+        <button class="done-btn${done ? ' on' : ''}" data-action="complete" ${id} aria-pressed="${done}" aria-label="${done ? 'Done. Tap to undo.' : 'Mark as done'}">${ICON_SVG.tick}</button>
       </div>
-
-      <section class="card rem-card">
-        <div class="rem-row">
-          <span class="rem-icon" aria-hidden="true">⏰</span>
-          <div class="rem-body">
-            <strong>${h.reminder ? `Reminder at ${esc(fmtTime(h.reminder))}` : 'No reminder'}</strong>
-            <span class="muted small">${h.reminder ? esc(scheduleText(h)) : 'Get a nudge at a time you choose.'}</span>
-          </div>
-          <button class="ghost" data-action="edit" data-id="${esc(h.id)}">${h.reminder ? 'Change' : 'Set one'}</button>
-        </div>
-        ${h.reminder ? `
-          <button class="primary rem-cal" data-action="ics" data-id="${esc(h.id)}">📅 Add to calendar</button>
-          <p class="muted small rem-tip">Your calendar app then reminds you, even when Habit For Me is closed.</p>` : ''}
-      </section>
-
-      <section class="card" style="${habitVars(h)}">
-        <div class="cal-head">
-          <button class="icon-btn" data-action="month" data-delta="-1" aria-label="Previous month">${ICON_SVG.left}</button>
-          <strong>${esc(fmt(first, { month: 'long', year: 'numeric' }))}</strong>
-          <button class="icon-btn" data-action="month" data-delta="1" aria-label="Next month" ${atLatestMonth ? 'disabled' : ''}>${ICON_SVG.right}</button>
-        </div>
-        <div class="cal">${cells}</div>
-        <div class="cal-legend">
-          <span><i class="k-done"></i>Done</span><span><i class="k-part"></i>Partly</span><span><i class="k-miss"></i>Missed</span>
-        </div>
-        <p class="muted small">Tap a day to mark it done or not done. You can fill in days you forgot.</p>
-      </section>
-
-      <button class="danger-btn${armed ? ' armed' : ''}" data-action="delete" data-id="${esc(h.id)}">
-        ${armed ? 'Tap again to delete for good' : 'Delete habit'}
-      </button>
+      <div class="cnt-foot">
+        <button class="foot-btn" data-action="memo" ${id}><span class="fi memo">${ICON_SVG.memo}</span>Memo</button>
+        <button class="foot-btn" data-action="stat" ${id}><span class="fi stat">${ICON_SVG.bars}</span>Stat</button>
+      </div>
     </div>`;
 }
 
-/* Stats: Weekly, Monthly and Yearly reports */
+/* A habit's Stat page */
 
-function renderStats() {
-  const tabs = RANGES.map(([r, label]) =>
-    `<button class="${ui.range === r ? 'on' : ''}" data-action="range" data-range="${r}" aria-pressed="${ui.range === r}">${label}</button>`).join('');
-  const head = `<header class="stats-head"><div class="range-tabs" role="group" aria-label="Report period">${tabs}</div></header>`;
-  if (!state.habits.length) return `${head}<p class="empty-note">Add a habit to see your progress here.</p>`;
-
-  const tk = todayKey();
-  const a = parseKey(ui.anchor);
-  let label;
-  let body;
-  let atLatest;
-  if (ui.range === 'month') {
-    const first = new Date(a.getFullYear(), a.getMonth(), 1);
-    label = fmt(first, { month: 'long', year: 'numeric' });
-    atLatest = keyOf(first).slice(0, 7) >= tk.slice(0, 7);
-    body = monthlyView(first);
-  } else if (ui.range === 'year') {
-    const y = a.getFullYear();
-    label = String(y);
-    atLatest = y >= parseKey(tk).getFullYear();
-    body = yearlyView(y);
-  } else {
-    const start = startOfWeek(a);
-    const end = addDays(start, 6);
-    label = `${fmt(start, { month: 'short', day: 'numeric' })} – ${fmt(end, { month: 'short', day: 'numeric' })}`;
-    atLatest = keyOf(end) >= tk;
-    body = weeklyView(start);
-  }
-
-  return `${head}
-    <section class="report">
-      <div class="banner" aria-hidden="true"><span class="sun">☀️</span><span class="script">Habit For Me</span><span class="moon">🌙</span></div>
-      <div class="period">
-        <button class="dot-btn" data-action="period" data-delta="-1" aria-label="Earlier">${ICON_SVG.left}</button>
-        <span class="period-label">${esc(label)}</span>
-        <button class="dot-btn" data-action="period" data-delta="1" aria-label="Later" ${atLatest ? 'disabled' : ''}>${ICON_SVG.right}</button>
-      </div>
-      ${body}
-    </section>`;
-}
-
-/** Class for one day of a report grid: done, part(ly), miss(ed), off (not scheduled) or future. */
+/** Class for one day of a habit: done, part(ly), miss(ed), off (not scheduled) or future. */
 function dayClass(h, d, start, tk) {
   const k = keyOf(d);
   const c = countOf(h, k);
@@ -663,197 +713,478 @@ function dayClass(h, d, start, tk) {
   return isDue(h, d, start) ? 'miss' : 'off';
 }
 
-function weeklyView(start) {
+/** The first and last day shown for a month grid (whole weeks). */
+function monthGrid(mk) {
+  const first = monthStart(mk);
+  const last = monthEnd(mk);
+  const lead = (first.getDay() - state.settings.weekStart + 7) % 7;
+  const trail = 6 - ((last.getDay() - state.settings.weekStart + 7) % 7);
+  return { first, gridStart: addDays(first, -lead), total: lead + last.getDate() + trail };
+}
+
+const dowRow = () => weekOrder().map((d) => `<span class="dow" aria-hidden="true">${esc(dayName(d, 'narrow'))}</span>`).join('');
+const monthTitle = (d) => `${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+
+function habitCalendar(h) {
   const tk = todayKey();
-  const days = ALL_DAYS.map((i) => addDays(start, i));
-  const head = days.map((d) => `<span class="${keyOf(d) === tk ? 'now' : ''}">${esc(fmt(d, { weekday: 'narrow' }))}</span>`).join('');
-
-  const rows = state.habits.map((h) => {
-    const s = startKey(h);
-    let due = 0;
-    let met = 0;
-    const cells = days.map((d) => {
-      const k = keyOf(d);
-      const cls = dayClass(h, d, s, tk);
-      if (k <= tk && isDue(h, d, s)) {
-        if (cls === 'done') { due++; met++; } else if (k !== tk) due++;
-      }
-      return `<span class="sq ${cls}"></span>`;
-    }).join('');
-    const perfect = due > 0 && met === due;
-    return `
-      <div class="wk-row" style="${habitVars(h)}">
-        <div class="wk-name"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</div>
-        <div class="wk-grid" role="img" aria-label="${esc(`${h.name}: ${met} of ${due} scheduled days done${perfect ? ', perfect' : ''}`)}">
-          ${cells}<span class="badge">${perfect ? '<span title="Perfect">🏅</span>' : ''}</span>
-        </div>
-      </div>`;
-  }).join('');
-
-  const moodOf = (d) => entryOf(keyOf(d)).mood;
-  const moodCells = days.map((d) => `<span class="mood-cell">${moodOf(d) ? MOODS[moodOf(d) - 1].emoji : ''}</span>`).join('');
-  const moodWords = days.map((d) => `${fmt(d, { weekday: 'long' })} ${moodOf(d) ? MOODS[moodOf(d) - 1].label : 'not set'}`).join(', ');
-  const sum = weekSummary(days);
-  const top = Math.max(0, ...state.habits.map((h) => currentStreak(h)));
+  const start = startKey(h);
+  const { first, gridStart, total } = monthGrid(ui.month);
+  let cells = dowRow();
+  for (let i = 0; i < total; i++) {
+    const d = addDays(gridStart, i);
+    const k = keyOf(d);
+    const c = countOf(h, k);
+    const cls = ['cd'];
+    let said = 'not done';
+    if (d.getMonth() !== first.getMonth()) cls.push('out');
+    if (k > tk) { cls.push('future'); said = 'upcoming'; }
+    else if (c >= h.goal) { cls.push('done'); said = 'done'; }
+    else if (c > 0) said = `${c} of ${h.goal}`;
+    else if (isDue(h, d, start) && k < tk) said = 'missed';
+    else if (!h.days.includes(d.getDay())) { cls.push('off'); said = 'not scheduled'; }
+    if (k === tk) cls.push('today');
+    const label = `${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}: ${said}`;
+    cells += `<button class="${cls.join(' ')}" style="--p:${Math.min(c / h.goal, 1).toFixed(3)}" data-action="cal" data-id="${esc(h.id)}" data-key="${k}" ${k > tk ? 'disabled' : ''} aria-label="${esc(label)}"><b>${d.getDate()}</b></button>`;
+  }
+  const atLatest = ui.month >= tk.slice(0, 7);
   return `
-    <div class="wk">
-      <div class="wk-row wk-headrow" aria-hidden="true"><div class="wk-name"></div><div class="wk-grid wk-head">${head}<span></span></div></div>
-      ${rows}
-      <div class="wk-row wk-moodrow">
-        <div class="wk-name">Mood</div>
-        <div class="wk-grid" role="img" aria-label="${esc(`Mood: ${moodWords}`)}">${moodCells}<span></span></div>
+    <section class="card">
+      <div class="cal-nav">
+        <button class="nav-btn" data-action="month" data-delta="-1" aria-label="Previous month">${ICON_SVG.left}</button>
+        <strong aria-label="${esc(fmt(first, { month: 'long', year: 'numeric' }))}">${monthTitle(first)}</strong>
+        <button class="nav-btn" data-action="month" data-delta="1" aria-label="Next month" ${atLatest ? 'disabled' : ''}>${ICON_SVG.right}</button>
       </div>
-    </div>
-    <div class="kpis">
-      <div class="kpi k1"><b>${sum.met === null ? '–' : pct(sum.met)}</b><span>Met</span></div>
-      <div class="kpi k2"><b>${sum.perfect}</b><span>Perfect days</span></div>
-      <div class="kpi k3"><b>${sum.total}</b><span>Total done</span></div>
-      <div class="kpi k4"><b>${top}<small>d</small></b><span>Top streak</span></div>
+      <div class="cal7">${cells}</div>
+      <p class="hint">Tap a day to check it in or undo it.</p>
+    </section>`;
+}
+
+/** Yearly status: one small square per day, a column for each week. */
+function yearGrid(h) {
+  const tk = todayKey();
+  const start = startKey(h);
+  const y = ui.year;
+  const jan1 = new Date(y, 0, 1);
+  const lead = (jan1.getDay() - state.settings.weekStart + 7) % 7;
+  let cells = '<i class="x"></i>'.repeat(lead);
+  let n = lead;
+  let done = 0;
+  for (let d = new Date(jan1); d.getFullYear() === y; d = addDays(d, 1)) {
+    const cls = dayClass(h, d, start, tk);
+    if (cls === 'done') done++;
+    cells += `<i class="${cls}"></i>`;
+    n++;
+  }
+  const cols = Math.ceil(n / 7);
+  cells += '<i class="x"></i>'.repeat(cols * 7 - n);
+  const atLatest = y >= new Date().getFullYear();
+  return `
+    <section class="card">
+      <div class="card-head">
+        <h2>Yearly status</h2>
+        <div class="yr-nav">
+          <button class="nav-btn sm" data-action="year" data-delta="-1" aria-label="Previous year">${ICON_SVG.left}</button>
+          <span class="yr-pill">${y}</span>
+          <button class="nav-btn sm" data-action="year" data-delta="1" aria-label="Next year" ${atLatest ? 'disabled' : ''}>${ICON_SVG.right}</button>
+        </div>
+      </div>
+      <div class="ygrid" style="--cols:${cols}" role="img" aria-label="${esc(`${h.name} in ${y}: done on ${plural(done, 'day')}`)}">${cells}</div>
+    </section>`;
+}
+
+function memosCard(h) {
+  const all = Object.entries(state.memos[h.id] || {}).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+  const shown = ui.memosAll ? all : all.slice(0, 3);
+  const rows = shown.map(([k, m]) => `
+    <button class="memo-row" data-action="memo" data-id="${esc(h.id)}" data-key="${k}">
+      <span class="mr-emo" aria-hidden="true">${esc(m.emoji || '📝')}</span>
+      <span class="mr-text">${m.text ? esc(m.text) : '<span class="muted">No words, just a feeling</span>'}</span>
+      <span class="mr-date">${k}</span>
+    </button>`).join('');
+  return `
+    <section class="card">
+      <div class="card-head">
+        <h2>Memos</h2>
+        ${all.length > 3 ? `<button class="more" data-action="memos-all">${ui.memosAll ? 'Less' : 'More'}${ICON_SVG.right}</button>` : ''}
+      </div>
+      ${rows || '<p class="hint">No memos yet. Tap <strong>Memo</strong> on the habit’s page to write how it went.</p>'}
+    </section>`;
+}
+
+function segButtons(action, options, current, label) {
+  return `<div class="seg" role="group" aria-label="${esc(label)}">${options.map(([v, text]) =>
+    `<button data-action="${action}" data-value="${v}" aria-pressed="${v === current}">${esc(text)}</button>`).join('')}</div>`;
+}
+
+function trendCard(h) {
+  const tk = todayKey();
+  const today = parseKey(tk);
+  const bars = [];
+  if (ui.trend === 'year') {
+    for (let i = 11; i >= 0; i--) {
+      const first = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const st = periodStats([h], first, new Date(first.getFullYear(), first.getMonth() + 1, 0));
+      const v = st.rate || 0;
+      bars.push({ v, label: fmt(first, { month: 'narrow' }), title: `${fmt(first, { month: 'long', year: 'numeric' })}: ${st.rate === null ? 'nothing scheduled' : pct(v)}` });
+    }
+  } else {
+    const n = ui.trend === 'month' ? 30 : 7;
+    for (let i = n - 1; i >= 0; i--) {
+      const d = addDays(today, -i);
+      const c = countOf(h, keyOf(d));
+      const label = n === 7 ? `${pad(d.getMonth() + 1)}.${pad(d.getDate())}` : i % 6 === 0 ? String(d.getDate()) : '';
+      bars.push({ v: Math.min(c / h.goal, 1), label, title: `${fmt(d, { month: 'short', day: 'numeric' })}: ${c} of ${h.goal}` });
+    }
+  }
+  const met = bars.filter((b) => b.v >= 1).length;
+  const what = ui.trend === 'year' ? 'months fully done' : 'days done';
+  return `
+    <section class="card">
+      <div class="card-head">
+        <h2>Trending</h2>
+        ${segButtons('trend', [['week', '1 Week'], ['month', '1 Month'], ['year', '1 Year']], ui.trend, 'Chart period')}
+      </div>
+      <div class="chart${bars.length > 12 ? ' dense' : ''}" role="img" aria-label="${esc(`${met} of ${bars.length} ${what}`)}">
+        ${bars.map((b) => `<div class="bar-col" title="${esc(b.title)}"><div class="bar"><i style="--v:${b.v.toFixed(3)}"></i></div><span>${esc(b.label)}</span></div>`).join('')}
+      </div>
+      <div class="legend"><span><i class="lg-met"></i>Met</span><span><i class="lg-unmet"></i>Unmet</span></div>
+    </section>`;
+}
+
+function compareCard(h) {
+  const tk = todayKey();
+  const thisWeek = startOfWeek(parseKey(tk));
+  const lastWeek = addDays(thisWeek, -7);
+  const v = (d) => (keyOf(d) > tk ? 0 : Math.min(countOf(h, keyOf(d)) / h.goal, 1));
+  let a = 0;
+  let b = 0;
+  const cols = weekOrder().map((dow, i) => {
+    const lw = v(addDays(lastWeek, i));
+    const tw = v(addDays(thisWeek, i));
+    a += lw;
+    b += tw;
+    return `<div class="bar-col"><div class="bar-pair"><div class="bar last"><i style="--v:${lw.toFixed(3)}"></i></div><div class="bar"><i style="--v:${tw.toFixed(3)}"></i></div></div><span>${esc(dayCode(dow))}</span></div>`;
+  }).join('');
+  return `
+    <section class="card">
+      <div class="card-head"><h2>Comparison</h2><span class="muted small">Week</span></div>
+      <div class="chart cmp" role="img" aria-label="${esc(`Last week ${fmtNum(a)} days done, this week ${fmtNum(b)} so far`)}">${cols}</div>
+      <div class="legend"><span><i class="lg-last"></i>Last week</span><span><i class="lg-met"></i>This week</span></div>
+    </section>`;
+}
+
+function renderHabitStats(h) {
+  const first = monthStart(ui.month);
+  const mon = fmt(first, { month: 'short' });
+  const ms = periodStats([h], first, monthEnd(ui.month));
+  const volAll = Object.values(state.log[h.id] || {}).reduce((a, b) => a + b, 0);
+  const cur = currentStreak(h);
+  const best = bestStreak(h);
+  const total = totalDone(h);
+  const dd = (n) => (n === 1 ? 'day' : 'days');
+  const tiles = [
+    ['cal', '#3d8bff', ms.done, dd(ms.done), `Done in ${mon}`],
+    ['check', '#3ccf7a', total, dd(total), 'Total done'],
+    ['flame', '#8e6bff', cur, dd(cur), 'Current streak'],
+    ['medal', '#ffa94d', best, dd(best), 'Best streak'],
+    ['bars', '#4cd07d', ms.volume, h.unit, `Count in ${mon}`],
+    ['sum', '#ff5c9a', volAll, h.unit, 'Total count'],
+    ['avg', '#b36bff', fmtNum(ms.volume / Math.max(ms.days, 1)), '', 'Daily average'],
+    ['pie', '#2ec4d6', ms.rate === null ? '–' : Math.round(ms.rate * 100), ms.rate === null ? '' : '%', 'Monthly rate'],
+  ];
+  const tileHtml = tiles.map(([ic, col, val, unit, label]) => `
+    <div class="tile">
+      <span class="ti" style="--t:${col}">${ICON_SVG[ic]}</span>
+      <div class="val">${esc(String(val))}${unit ? `<small>${esc(unit)}</small>` : ''}</div>
+      <div class="lbl">${esc(label)}</div>
+    </div>`).join('');
+
+  return `
+    <div class="hstat" style="${habitVars(h)};--k:${h.color};--kink:${inkOn(h.color)}">
+      ${topBar(`<span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}`,
+        roundBtn('close-stat', ICON_SVG.close, 'Close'),
+        '<button class="round" data-action="tips" aria-label="Tips" title="Tips"><span class="emo" aria-hidden="true">💡</span></button>')}
+      <div class="wide-grid">
+        <div>${habitCalendar(h)}${yearGrid(h)}</div>
+        <div><div class="tiles">${tileHtml}</div>${memosCard(h)}</div>
+      </div>
+      <div class="wide-grid">
+        <div>${trendCard(h)}</div>
+        <div>${compareCard(h)}</div>
+      </div>
     </div>`;
 }
 
-function monthlyView(first) {
-  const tk = todayKey();
-  const y = first.getFullYear();
-  const m = first.getMonth();
-  const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const lead = (first.getDay() - state.settings.weekStart + 7) % 7;
-  const dows = weekOrder().map((d) => `<span class="mc-dow">${esc(dayName(d, 'narrow'))}</span>`).join('');
+/* Stats */
 
-  const cards = state.habits.map((h) => {
-    const s = startKey(h);
-    let met = 0;
-    let cells = '<span></span>'.repeat(lead);
-    for (let i = 1; i <= daysInMonth; i++) {
+function statsCalendar(list) {
+  const tk = todayKey();
+  const { first, gridStart, total } = monthGrid(ui.smonth);
+  let cells = dowRow();
+  for (let i = 0; i < total; i++) {
+    const d = addDays(gridStart, i);
+    const k = keyOf(d);
+    const future = k > tk;
+    const p = future ? null : progressOf(list, d);
+    const cls = ['cd'];
+    if (d.getMonth() !== first.getMonth()) cls.push('out');
+    if (future) cls.push('future');
+    if (p === 1) cls.push('done');
+    if (k === tk) cls.push('today');
+    const label = `${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}${p === null ? '' : `: ${pct(p)} done`}. Open this day.`;
+    cells += `<button class="${cls.join(' ')}" style="--p:${(p || 0).toFixed(3)}" data-action="goto-day" data-key="${k}" ${future ? 'disabled' : ''} aria-label="${esc(label)}"><b>${d.getDate()}</b></button>`;
+  }
+  const atLatest = ui.smonth >= tk.slice(0, 7);
+  return `
+    <section class="card">
+      <div class="cal-nav">
+        <button class="nav-btn" data-action="smonth" data-delta="-1" aria-label="Previous month">${ICON_SVG.left}</button>
+        <strong aria-label="${esc(fmt(first, { month: 'long', year: 'numeric' }))}">${monthTitle(first)}</strong>
+        <button class="nav-btn" data-action="smonth" data-delta="1" aria-label="Next month" ${atLatest ? 'disabled' : ''}>${ICON_SVG.right}</button>
+      </div>
+      <div class="cal7">${cells}</div>
+    </section>`;
+}
+
+function statsYear(list) {
+  const tk = todayKey();
+  const y = Number(ui.smonth.slice(0, 4));
+  let months = '';
+  for (let m = 0; m < 12; m++) {
+    const first = new Date(y, m, 1);
+    const lead = (first.getDay() - state.settings.weekStart + 7) % 7;
+    const dim = new Date(y, m + 1, 0).getDate();
+    let dots = '<i class="x"></i>'.repeat(lead);
+    for (let i = 1; i <= dim; i++) {
       const d = new Date(y, m, i);
-      let cls = dayClass(h, d, s, tk);
-      if (cls === 'done') met++;
-      if (keyOf(d) === tk) cls += ' today';
-      cells += `<span class="${cls}">${i}</span>`;
+      const p = keyOf(d) > tk ? null : progressOf(list, d);
+      dots += `<i class="${p === null || p === 0 ? '' : p >= 1 ? 'l3' : p >= 0.5 ? 'l2' : 'l1'}"></i>`;
     }
-    return `
-      <button class="mcard" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}" aria-label="${esc(`${h.name}: done on ${plural(met, 'day')} this month. Open details.`)}">
-        <span class="mc-title"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</span>
-        <span class="mc-grid" aria-hidden="true">${dows}${cells}</span>
-        <span class="mc-foot" aria-hidden="true">${plural(met, 'day')}</span>
+    const mk = monthOf(first);
+    months += `
+      <button class="ym" data-action="open-month" data-value="${mk}" ${mk > tk.slice(0, 7) ? 'disabled' : ''} aria-label="${esc(`Show ${fmt(first, { month: 'long', year: 'numeric' })}`)}">
+        <strong>${esc(fmt(first, { month: 'short' }))}</strong><span class="ym-grid" aria-hidden="true">${dots}</span>
       </button>`;
-  }).join('');
-  return `<div class="months">${cards}</div>`;
+  }
+  const atLatest = y >= new Date().getFullYear();
+  return `
+    <section class="card">
+      <div class="cal-nav">
+        <button class="nav-btn" data-action="syear" data-delta="-1" aria-label="Previous year">${ICON_SVG.left}</button>
+        <strong>${y}</strong>
+        <button class="nav-btn" data-action="syear" data-delta="1" aria-label="Next year" ${atLatest ? 'disabled' : ''}>${ICON_SVG.right}</button>
+      </div>
+      <div class="ymonths">${months}</div>
+    </section>`;
 }
 
-/** One row per month, one square per day: a whole year at a glance. */
-function yearlyView(y) {
+function rateCard(list, single) {
+  const y = Number(ui.smonth.slice(0, 4));
+  const from = ui.rateYear ? new Date(y, 0, 1) : monthStart(ui.smonth);
+  const to = ui.rateYear ? new Date(y, 11, 31) : monthEnd(ui.smonth);
+  const st = periodStats(list, from, to);
+  const best = Math.max(0, ...list.map((h) => bestStreak(h)));
+  const R = 82;
+  const C = 2 * Math.PI * R;
+  const p = st.rate || 0;
+  const dd = (n) => (n === 1 ? 'Day' : 'Days');
+  const items = [
+    ['medal', '#ffa94d', best, dd(best), 'Best streak'],
+    single ? ['cal', '#3d8bff', st.done, dd(st.done), 'Days done'] : ['cal', '#3d8bff', st.perfect, dd(st.perfect), 'Perfect days'],
+    single ? ['check', '#3ccf7a', st.volume, '', 'Times done'] : ['check', '#3ccf7a', st.done, '', 'Habits done'],
+    ['avg', '#b36bff', fmtNum((single ? st.volume : st.done) / Math.max(st.days, 1)), '', 'Daily average'],
+  ];
+  const period = ui.rateYear ? String(y) : fmt(monthStart(ui.smonth), { month: 'long', year: 'numeric' });
+  return `
+    <section class="card rate-card">
+      <div class="rate-ring">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r="${R}" class="track"/>
+          ${p > 0 ? `<circle cx="100" cy="100" r="${R}" class="prog" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 100 100)"/>` : ''}
+        </svg>
+        <div class="rate-in">
+          <b>${st.rate === null ? '–' : `${(st.rate * 100).toFixed(2)}%`}</b>
+          <span>${ui.rateYear ? 'Yearly rate' : 'Monthly rate'}</span>
+          <button class="swap" data-action="rate-mode" aria-label="${ui.rateYear ? 'Show the monthly rate' : 'Show the yearly rate'}" title="Month or year">${ICON_SVG.swap}</button>
+        </div>
+      </div>
+      <p class="period">${esc(period)}</p>
+      <div class="kgrid">
+        ${items.map(([ic, col, val, unit, label]) => `
+          <div class="kitem">
+            <span class="ti round-ti" style="--t:${col}">${ICON_SVG[ic]}</span>
+            <b>${esc(String(val))}${unit ? `<small>${unit}</small>` : ''}</b>
+            <span>${label}</span>
+          </div>`).join('')}
+      </div>
+    </section>`;
+}
+
+function doneTodayCard(list) {
   const tk = todayKey();
-  const cards = state.habits.map((h) => {
-    const s = startKey(h);
-    let done = 0;
-    let due = 0;
-    let dueDone = 0;
-    let cells = '';
-    for (let m = 0; m < 12; m++) {
-      const dim = new Date(y, m + 1, 0).getDate();
-      for (let i = 1; i <= 31; i++) {
-        if (i > dim) { cells += '<i class="x"></i>'; continue; }
-        const d = new Date(y, m, i);
-        const k = keyOf(d);
-        const cls = dayClass(h, d, s, tk);
-        if (cls === 'done') done++;
-        if (k <= tk && isDue(h, d, s) && (cls === 'done' || k !== tk)) {
-          due++;
-          if (cls === 'done') dueDone++;
-        }
-        cells += `<i class="${cls}"></i>`;
-      }
-    }
-    const share = due ? pct(dueDone / due) : '–';
-    return `
-      <button class="ycard" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}" aria-label="${esc(`${h.name}: done on ${plural(done, 'day')} in ${y}. Open details.`)}">
-        <span class="yc-head"><span class="yc-name"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</span><span class="yc-stat">${plural(done, 'day')} · ${share}</span></span>
-        <span class="ygrid" aria-hidden="true">${cells}</span>
-      </button>`;
-  }).join('');
-  return `<div class="years">${cards}</div>`;
+  const rows = list.filter((h) => countOf(h, tk) > 0).map((h) => `
+    <button class="drow" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}">
+      <span class="dr-ic" aria-hidden="true">${esc(h.icon)}</span>
+      <span class="dr-name">${esc(h.name)}</span>
+      <span class="dr-c${isDone(h, tk) ? ' ok' : ''}">${countOf(h, tk)}/${h.goal}</span>
+    </button>`).join('');
+  return `
+    <section class="card">
+      <div class="card-head"><h2>Done today</h2><button class="more" data-action="tab" data-tab="today">More${ICON_SVG.right}</button></div>
+      ${rows || '<p class="hint center">Nothing checked off yet today.</p>'}
+    </section>`;
 }
 
-/* Me: this week, settings and backups */
+function renderStats() {
+  const list = active();
+  let pick = ui.pick === 'all' ? null : findHabit(ui.pick);
+  if (pick && pick.archived) pick = null;
+  if (!pick) ui.pick = 'all';
+  const subjects = pick ? [pick] : list;
+  const color = pick ? pick.color : 'var(--accent)';
+  const colorInk = pick ? inkOn(pick.color) : 'var(--accent-ink)';
+
+  const pickBtn = `
+    <button class="stat-pick" data-action="menu" data-menu="pick" aria-haspopup="true" aria-expanded="${ui.menu === 'pick'}">
+      ${pick ? `<span class="pick-ic" aria-hidden="true">${esc(pick.icon)}</span>` : '<span class="all-badge" aria-hidden="true">All</span>'}
+      <span class="pick-name">${esc(pick ? pick.name : 'Overall')}</span>${ICON_SVG.down}
+    </button>`;
+  const menu = ui.menu === 'pick' ? popover([
+    { action: 'pick', attrs: 'data-value="all"', label: 'Overall', icon: '<span class="all-badge">All</span>', on: !pick },
+    ...list.map((h) => ({ action: 'pick', attrs: `data-value="${esc(h.id)}"`, label: h.name, icon: esc(h.icon), on: pick === h })),
+  ], 'pop-center') : '';
+  const left = roundBtn('stat-view', ui.yearView ? ICON_SVG.cal : ICON_SVG.grid, ui.yearView ? 'Show one month' : 'Show the whole year');
+  const head = topBar(pickBtn, left, roundBtn('add', ICON_SVG.plus, 'Add a new habit'), menu);
+
+  if (!list.length) return `${head}<p class="empty-note">Add a habit to see your progress here.</p>`;
+
+  const chips = `
+    <div class="chip-row" role="group" aria-label="Choose a habit">
+      <button class="echip${pick ? '' : ' on'}" data-action="pick" data-value="all" aria-pressed="${!pick}" aria-label="All habits" title="All habits"><span class="all-badge" aria-hidden="true">All</span></button>
+      ${list.map((h) => `<button class="echip${pick === h ? ' on' : ''}" data-action="pick" data-value="${esc(h.id)}" aria-pressed="${pick === h}" aria-label="${esc(h.name)}" title="${esc(h.name)}"><span aria-hidden="true">${esc(h.icon)}</span></button>`).join('')}
+    </div>`;
+
+  return `${head}${chips}
+    <div class="wide-grid" style="--k:${color};--kink:${colorInk}">
+      <div>${ui.yearView ? statsYear(subjects) : statsCalendar(subjects)}</div>
+      <div>${rateCard(subjects, Boolean(pick))}${doneTodayCard(list)}</div>
+    </div>`;
+}
+
+/* All habits */
+
+function renderHabits() {
+  const list = active();
+  const archived = state.habits.filter((h) => h.archived);
+  const head = topBar('Habits', '', roundBtn('add', ICON_SVG.plus, 'Add a new habit'));
+  if (!state.habits.length) return `${head}<p class="empty-note">No habits yet. Tap <strong>+</strong> to add one.</p>`;
+
+  const meta = (h) => {
+    const parts = [scheduleText(h)];
+    if (h.goal > 1) parts.push(`${h.goal}${h.unit ? ` ${h.unit}` : ' times'} a day`);
+    if (h.time !== 'any') parts.push(TIMES.find(([t]) => t === h.time)[1]);
+    if (h.group) parts.push(h.group);
+    if (h.reminder) parts.push(`⏰ ${fmtTime(h.reminder)}`);
+    return parts.join(' · ');
+  };
+  const row = (h) => {
+    const s = currentStreak(h);
+    return `
+      <li>
+        <button class="lrow" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}">
+          <span class="lr-icon" aria-hidden="true">${esc(h.icon)}</span>
+          <span class="lr-body"><span class="lr-name">${esc(h.name)}</span><span class="lr-meta">${esc(meta(h))}</span></span>
+          ${s ? `<span class="lr-streak" aria-label="${esc(`${plural(s, 'day')} in a row`)}">🔥 ${s}</span>` : ''}
+          <span class="lr-chev" aria-hidden="true">${ICON_SVG.right}</span>
+        </button>
+      </li>`;
+  };
+  const archivedRows = archived.map((h) => `
+    <li class="arow">
+      <button class="lrow" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}">
+        <span class="lr-icon" aria-hidden="true">${esc(h.icon)}</span>
+        <span class="lr-body"><span class="lr-name">${esc(h.name)}</span><span class="lr-meta">${esc(meta(h))}</span></span>
+      </button>
+      <button class="ghost" data-action="archive" data-id="${esc(h.id)}">Restore</button>
+    </li>`).join('');
+
+  return `${head}
+    <p class="sub-note">${plural(list.length, 'habit')}${archived.length ? ` · ${archived.length} archived` : ''}</p>
+    ${list.length ? `<ul class="list">${list.map(row).join('')}</ul>` : '<p class="empty-note">Every habit is archived.</p>'}
+    ${archived.length ? `<h2 class="sec-title">Archived</h2><ul class="list">${archivedRows}</ul>` : ''}`;
+}
+
+/* Me: moods, quote, settings and backups */
 
 function renderMe() {
-  const t = state.settings.theme;
-  const ws = state.settings.weekStart;
+  const s = state.settings;
+  const t = s.theme;
+  const ws = s.weekStart;
   const installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  const seg = (action, value, label, on) => `<button data-action="${action}" data-value="${value}" aria-pressed="${on}">${label}</button>`;
-
   const tk = todayKey();
   const start = startOfWeek(parseKey(tk));
-  const spoken = [];
   const week = ALL_DAYS.map((i) => {
     const d = addDays(start, i);
     const k = keyOf(d);
-    const p = k > tk ? null : dayProgress(d);
     const mood = entryOf(k).mood;
-    spoken.push(`${fmt(d, { weekday: 'long' })} ${p === null ? 'nothing yet' : pct(p)}${mood ? `, feeling ${MOODS[mood - 1].label}` : ''}`);
+    const label = `${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}: ${mood ? MOODS[mood - 1].label : 'no mood saved'}`;
     return `
-      <div class="wd${k === tk ? ' now' : ''}">
-        <span>${esc(fmt(d, { weekday: 'narrow' }))}</span>
-        <span class="wd-ring" style="--p:${(p || 0).toFixed(3)}"><b>${d.getDate()}</b></span>
-        <span class="wd-mood">${mood ? MOODS[mood - 1].emoji : ''}</span>
-      </div>`;
+      <button class="mw${k === tk ? ' now' : ''}${mood ? ' has' : ''}" data-action="day" data-key="${k}" ${k > tk ? 'disabled' : ''} aria-label="${esc(label)}">
+        <span class="mw-dow" aria-hidden="true">${esc(fmt(d, { weekday: 'narrow' }))}</span>
+        <span class="mw-ring" aria-hidden="true">${mood ? `<span class="emo">${MOODS[mood - 1].emoji}</span>` : d.getDate()}</span>
+      </button>`;
   }).join('');
+  const dayOfYear = Math.round((parseKey(tk) - new Date(parseKey(tk).getFullYear(), 0, 1)) / 864e5);
+  const chev = `<span class="row-chev" aria-hidden="true">${ICON_SVG.right}</span>`;
 
   return `
-    <header class="me-head">
-      <span class="avatar" aria-hidden="true"><img src="icons/icon.svg" alt=""></span>
-      <div><h1>Habit For Me</h1><p class="muted">Your habits stay on this device</p></div>
+    <header class="me-top">
+      <button class="avatar" data-action="profile" aria-label="Change your name and picture"><span aria-hidden="true">${esc(s.avatar)}</span></button>
+      <h1 class="me-title"><button class="me-name" data-action="profile" aria-label="${esc(`${s.name || 'You'}. Change your name`)}">${esc(s.name || 'You')}${ICON_SVG.pencil}</button></h1>
     </header>
 
-    <div class="me-grid">
-      <section class="panel wide">
-        <div class="panel-title">This week</div>
-        <div class="week-rings" role="img" aria-label="${esc(`This week: ${spoken.join(', ')}`)}">${week}</div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-title">Settings</div>
-        <div class="row"><span>Appearance</span>
-          <div class="seg" role="group" aria-label="Appearance">
-            ${seg('theme', 'system', 'Auto', t === 'system')}${seg('theme', 'light', 'Light', t === 'light')}${seg('theme', 'dark', 'Dark', t === 'dark')}
+    <div class="wide-grid">
+      <div>
+        <section class="card">
+          <div class="card-head"><h2>Moods</h2><button class="more" data-action="moods">View${ICON_SVG.right}</button></div>
+          <div class="mood-week">${week}</div>
+        </section>
+        <section class="quote-card">
+          <h2>Daily quote</h2>
+          <blockquote>${esc(QUOTES[dayOfYear % QUOTES.length])}</blockquote>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>Settings</h2></div>
+          <div class="row"><span>Appearance</span>${segButtons('theme', [['dark', 'Dark'], ['light', 'Light'], ['system', 'Auto']], t, 'Appearance')}</div>
+          <div class="row"><span>Week starts on</span>${segButtons('week-start', [['1', 'Mon'], ['0', 'Sun']], String(ws), 'Week starts on')}</div>
+          <div class="row"><span>Reminder notifications</span>${notifControl()}</div>
+          <button class="row" data-action="tab" data-tab="habits"><span>Habit manager</span>${chev}</button>
+          <button class="row" data-action="tips"><span>Usage tips</span>${chev}</button>
+        </section>
+      </div>
+      <div>
+        <section class="card">
+          <div class="card-head"><h2>Your data</h2></div>
+          <p class="help">Your habits are saved only on this device. Make a backup to keep them safe or move them to another phone.</p>
+          <button class="row" data-action="export"><span>Download a backup</span><span class="muted">.json</span></button>
+          <button class="row" data-action="import"><span>Restore from a backup</span><span class="muted">Replaces data</span></button>
+          <button class="row danger${ui.confirm === 'reset' ? ' armed' : ''}" data-action="reset">
+            <span>${ui.confirm === 'reset' ? 'Tap again to delete everything' : 'Delete all data'}</span>
+          </button>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>Put it on your phone</h2></div>
+          <div class="help">
+            ${installed ? '<p><strong>✓ Installed.</strong> You are using Habit For Me as an app.</p>' : `
+              <p><strong>iPhone / iPad:</strong> open this page in Safari, tap the Share button, then <em>Add to Home Screen</em>.</p>
+              <p><strong>Android:</strong> open it in Chrome, tap the ⋮ menu, then <em>Install app</em> or <em>Add to Home screen</em>.</p>
+              <p><strong>Mac:</strong> in Safari choose <em>File → Add to Dock</em>. In Chrome, click the install icon in the address bar.</p>`}
           </div>
-        </div>
-        <div class="row"><span>Week starts on</span>
-          <div class="seg" role="group" aria-label="Week starts on">
-            ${seg('week-start', 1, 'Mon', ws === 1)}${seg('week-start', 0, 'Sun', ws === 0)}
-          </div>
-        </div>
-        <div class="row"><span>Reminder notifications</span>${notifControl()}</div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-title">Recent notes</div>
-        ${recentNotes()}
-      </section>
-
-      <section class="panel">
-        <div class="panel-title">Your data</div>
-        <p class="help">Your habits are saved only on this device. Make a backup to keep them safe or move them to another phone.</p>
-        <button class="row" data-action="export"><span>Download a backup</span><span class="muted">.json</span></button>
-        <button class="row" data-action="import"><span>Restore from a backup</span><span class="muted">Replaces data</span></button>
-        <button class="row danger${ui.confirm === 'reset' ? ' armed' : ''}" data-action="reset">
-          <span>${ui.confirm === 'reset' ? 'Tap again to delete everything' : 'Delete all data'}</span>
-        </button>
-      </section>
-
-      <section class="panel help-panel">
-        <div class="panel-title">Put it on your phone</div>
-        <div class="help">
-          ${installed ? '<p><strong>✓ Installed.</strong> You are using Habit For Me as an app.</p>' : `
-            <p><strong>iPhone / iPad:</strong> open this page in Safari, tap the Share button, then <em>Add to Home Screen</em>.</p>
-            <p><strong>Android:</strong> open it in Chrome, tap the ⋮ menu, then <em>Install app</em> or <em>Add to Home screen</em>.</p>
-            <p><strong>Mac:</strong> in Safari choose <em>File → Add to Dock</em>. In Chrome, click the install icon in the address bar.</p>`}
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
 
-    <p class="muted small center about">Habit For Me · version 2.1</p>`;
+    <p class="about">Habit For Me · version 3.0</p>`;
 }
 
 function notifControl() {
@@ -863,134 +1194,343 @@ function notifControl() {
   return '<button class="ghost" data-action="notif">Turn on</button>';
 }
 
-function recentNotes() {
-  const keys = Object.keys(state.journal).filter((k) => state.journal[k].note).sort().reverse().slice(0, 5);
-  if (!keys.length) return '<p class="help">No notes yet. Add one under “How was your day?” on the Today screen.</p>';
+function recentNotes(limit) {
+  const keys = Object.keys(state.journal).sort().reverse().slice(0, limit);
+  if (!keys.length) return '<p class="hint center">Nothing yet. Tap the face at the top of Today to save how you feel.</p>';
   return keys.map((k) => {
     const e = state.journal[k];
     return `
-      <button class="row note-row" data-action="goto-day" data-key="${k}">
+      <button class="note-row" data-action="goto-day" data-key="${k}">
         <span class="nr-mood" aria-hidden="true">${e.mood ? MOODS[e.mood - 1].emoji : '📝'}</span>
         <span class="nr-body">
-          <span class="nr-date">${esc(fmt(parseKey(k), { weekday: 'short', month: 'short', day: 'numeric' }))}</span>
-          <span class="nr-text">${esc(e.note)}</span>
+          <span class="nr-date">${esc(fmt(parseKey(k), { weekday: 'short', month: 'short', day: 'numeric' }))}${e.mood ? ` · ${MOODS[e.mood - 1].label}` : ''}</span>
+          ${e.note ? `<span class="nr-text">${esc(e.note)}</span>` : ''}
         </span>
       </button>`;
   }).join('');
 }
 
-/* ---------- 6. Add / edit sheet ---------- */
+/* ---------- 6. Sheets ---------- */
 
 const sheet = document.getElementById('sheet');
+const closeBtn = `<button type="button" class="round" data-action="close-sheet" aria-label="Close">${ICON_SVG.close}</button>`;
 
+function showSheet(html) {
+  sheet.innerHTML = `<div class="sheet-inner"><div class="grabber" aria-hidden="true"></div>${html}</div>`;
+  if (!sheet.open) sheet.showModal();
+  sheet.querySelector('.sheet-inner').scrollTop = 0;
+}
+
+function daysNote(goal, days, unit) {
+  if (!days.length) return '*Pick at least one day';
+  const what = `${goal} ${unit || (goal === 1 ? 'time' : 'times')}`;
+  if (days.length === 7) return `*Complete ${what} every day`;
+  return `*Complete ${what} on each ${weekOrder().filter((d) => days.includes(d)).map(dayCode).join(' ')}`;
+}
+
+function updateDaysNote(form) {
+  const goal = clampInt(form.elements.goal.value, 1, MAX_COUNT, 1);
+  const days = [...form.querySelectorAll('input[name="days"]:checked')].map((i) => Number(i.value));
+  form.querySelector('.f-note').textContent = daysNote(goal, days, form.elements.unit.value.trim());
+}
+
+function setFormColor(form, c) {
+  form.style.setProperty('--accent', c);
+  form.style.setProperty('--accent-ink', inkOn(c));
+}
+
+/** The form for adding a habit (h = null) or changing one. */
 function openSheet(h, preset) {
   ui.editing = h ? h.id : null;
+  const p = preset || {};
   const v = h || {
-    name: preset ? preset.name : '',
-    icon: preset ? preset.icon : ICONS[0],
-    color: preset ? preset.color : COLORS[0],
-    goal: preset ? preset.goal : 1,
+    name: p.name || '',
+    desc: p.desc || '',
+    icon: p.icon || ICONS[0],
+    color: p.color || NEW_COLORS[state.habits.length % NEW_COLORS.length],
+    goal: p.goal || 1,
+    unit: p.unit || '',
     days: ALL_DAYS,
+    time: 'any',
+    group: '',
     reminder: '',
+    memo: false,
   };
   const icons = ICONS.includes(v.icon) ? ICONS : [v.icon, ...ICONS];
-  const colors = COLORS.includes(v.color) ? COLORS : [v.color, ...COLORS];
+  const known = PALETTES.flatMap(([, colors]) => colors);
+  const palIndex = Math.max(0, PALETTES.findIndex(([, colors]) => colors.includes(v.color)));
+  const palettes = PALETTES.map(([name, colors], i) => {
+    const list = i === 0 && !known.includes(v.color) ? [v.color, ...colors] : colors;
+    return `
+      <div class="pal" data-pal="${i}" ${i === palIndex ? '' : 'hidden'} role="radiogroup" aria-label="${esc(name)} colours">
+        ${list.map((c) => `<label class="opt color-opt" style="--sw:${c}"><input type="radio" name="color" value="${c}" ${c === v.color ? 'checked' : ''} aria-label="Colour ${c}"><span></span></label>`).join('')}
+      </div>`;
+  }).join('');
 
-  sheet.innerHTML = `
-    <div class="sheet-inner">
-      <div class="grabber" aria-hidden="true"></div>
-      <form id="habit-form" novalidate>
-        <div class="sheet-head">
-          <button type="button" class="x-btn" data-action="close-sheet" aria-label="Close">${ICON_SVG.close}</button>
-          <h2 id="sheet-title">${h ? 'Edit habit' : 'New habit'}</h2>
-          <span aria-hidden="true"></span>
+  showSheet(`
+    <form id="habit-form" class="hf" style="--accent:${v.color};--accent-ink:${inkOn(v.color)}" novalidate>
+      <div class="sheet-head">
+        ${closeBtn}
+        <h2 id="sheet-title">${h ? `<span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}` : 'New habit'}</h2>
+        <span class="round-gap" aria-hidden="true"></span>
+      </div>
+
+      <section class="fcard">
+        <div class="f-ident">
+          <button type="button" class="icon-tile" data-action="toggle-pick" data-value="icon-pick" aria-expanded="false" aria-label="Choose an icon"><span class="preview">${esc(v.icon)}</span></button>
+          <div class="f-names">
+            <input type="text" name="name" maxlength="60" placeholder="Habit name" value="${esc(v.name)}" autocomplete="off" aria-label="Habit name" required>
+            <input type="text" name="desc" maxlength="40" placeholder="Description (optional)" value="${esc(v.desc)}" autocomplete="off" aria-label="Description">
+          </div>
         </div>
-
-        <div class="fgroup name-row" style="--c:${v.color}">
-          <span class="preview" aria-hidden="true">${esc(v.icon)}</span>
-          <label class="name-field"><span class="flabel">Name</span>
-            <input type="text" name="name" maxlength="60" placeholder="e.g. Drink water" value="${esc(v.name)}" autocomplete="off" required>
-          </label>
-        </div>
-
-        <fieldset class="fgroup"><legend class="flabel">Icon</legend>
-          <div class="icon-grid">
+        <div class="icon-pick" id="icon-pick" hidden>
+          <div class="icon-grid" role="radiogroup" aria-label="Icon">
             ${icons.map((ic) => `<label class="opt icon-opt"><input type="radio" name="icon" value="${esc(ic)}" ${ic === v.icon ? 'checked' : ''} aria-label="${esc(ic)}"><span>${esc(ic)}</span></label>`).join('')}
           </div>
-        </fieldset>
+          <label class="f-row"><span>Or type any emoji</span><input type="text" name="icon_custom" maxlength="8" class="emoji-in" placeholder="🙂" autocomplete="off" aria-label="Your own emoji"></label>
+        </div>
+      </section>
 
-        <fieldset class="fgroup"><legend class="flabel">Colour</legend>
-          <div class="color-row">
-            ${colors.map((c, i) => `<label class="opt color-opt" style="--c:${c}"><input type="radio" name="color" value="${c}" ${c === v.color ? 'checked' : ''} aria-label="Colour ${i + 1}"><span></span></label>`).join('')}
+      <section class="fcard">
+        <button type="button" class="f-row f-link" data-action="toggle-pick" data-value="color-pick" aria-expanded="false"><span>Colour</span><span class="swatch" aria-hidden="true"></span>${ICON_SVG.right}</button>
+        <div class="color-pick" id="color-pick" hidden>
+          <div class="pal-tabs" role="group" aria-label="Colour sets">
+            ${PALETTES.map(([name], i) => `<button type="button" class="pchip${i === palIndex ? ' on' : ''}" data-action="pal" data-value="${i}" aria-pressed="${i === palIndex}">${esc(name)}</button>`).join('')}
           </div>
-        </fieldset>
+          ${palettes}
+        </div>
+        <label class="f-row"><span>Group</span><input type="text" name="group" maxlength="24" placeholder="(Optional)" value="${esc(v.group)}" list="group-list" autocomplete="off"></label>
+        <datalist id="group-list">${groupNames(state.habits).map((g) => `<option value="${esc(g)}"></option>`).join('')}</datalist>
+      </section>
 
-        <div class="fgroup frow">
-          <span class="flabel" id="goal-label">Times per day</span>
+      <section class="fcard">
+        <div class="f-row"><span id="goal-label">Goal per day</span>
           <div class="stepper" role="group" aria-labelledby="goal-label">
             <button type="button" data-action="step" data-delta="-1" aria-label="One fewer">−</button>
-            <output aria-live="polite">${v.goal}</output>
+            <input type="number" name="goal" min="1" max="${MAX_COUNT}" value="${v.goal}" inputmode="numeric" aria-label="Goal per day">
             <button type="button" data-action="step" data-delta="1" aria-label="One more">+</button>
           </div>
-          <input type="hidden" name="goal" value="${v.goal}">
         </div>
-        <p class="hint">Use more than 1 for things like “8 glasses of water”.</p>
+        <label class="f-row"><span>Unit</span><input type="text" name="unit" maxlength="12" placeholder="times" value="${esc(v.unit)}" autocomplete="off"></label>
+      </section>
 
-        <fieldset class="fgroup"><legend class="flabel">Repeat on</legend>
+      <section class="fcard">
+        <div class="f-row"><span>Task days</span>
           <div class="presets">
-            <button type="button" class="chip" data-action="preset" data-days="0,1,2,3,4,5,6">Every day</button>
-            <button type="button" class="chip" data-action="preset" data-days="1,2,3,4,5">Weekdays</button>
-            <button type="button" class="chip" data-action="preset" data-days="0,6">Weekends</button>
-          </div>
-          <div class="day-chips">
-            ${weekOrder().map((d) => `<label class="opt day-opt"><input type="checkbox" name="days" value="${d}" ${v.days.includes(d) ? 'checked' : ''} aria-label="${esc(dayName(d, 'long'))}"><span>${esc(dayName(d).slice(0, 2))}</span></label>`).join('')}
-          </div>
-        </fieldset>
-
-        <div class="fgroup">
-          <div class="frow">
-            <span class="flabel" id="rem-label">Reminder</span>
-            <label class="switch"><input type="checkbox" name="remind" ${v.reminder ? 'checked' : ''} aria-labelledby="rem-label"><span aria-hidden="true"></span></label>
-          </div>
-          <div class="rem-time"${v.reminder ? '' : ' hidden'}>
-            <label class="frow"><span>Time</span><input type="time" name="reminder" value="${v.reminder || '08:00'}"></label>
-            <p class="hint">You get a notification while Habit For Me is open. For reminders when it's closed, use <strong>Add to calendar</strong> on the habit's page.</p>
+            <button type="button" class="pchip sm" data-action="preset" data-value="0,1,2,3,4,5,6">Every day</button>
+            <button type="button" class="pchip sm" data-action="preset" data-value="1,2,3,4,5">Weekdays</button>
           </div>
         </div>
+        <div class="day-circles" role="group" aria-label="Task days">
+          ${weekOrder().map((d) => `<label class="opt day-opt"><input type="checkbox" name="days" value="${d}" ${v.days.includes(d) ? 'checked' : ''} aria-label="${esc(dayName(d, 'long'))}"><span>${esc(dayCode(d))}</span></label>`).join('')}
+        </div>
+        <p class="f-note" aria-live="polite">${esc(daysNote(v.goal, v.days, v.unit))}</p>
+      </section>
 
-        <p class="form-error" role="alert" hidden></p>
-        <button type="submit" class="primary">${h ? 'Save changes' : 'Add habit'}</button>
-      </form>
-    </div>`;
+      <section class="fcard">
+        <div class="f-row col"><span>Time of day</span>
+          <div class="time-chips" role="radiogroup" aria-label="Time of day">
+            ${TIMES.map(([t, label]) => `<label class="opt tchip"><input type="radio" name="time" value="${t}" ${v.time === t ? 'checked' : ''}><span>${label}</span></label>`).join('')}
+          </div>
+        </div>
+      </section>
 
-  sheet.showModal();
+      <section class="fcard">
+        <div class="f-row"><span id="rem-label">Reminder</span><label class="switch"><input type="checkbox" name="remind" ${v.reminder ? 'checked' : ''} aria-labelledby="rem-label"><span aria-hidden="true"></span></label></div>
+        <div class="rem-time"${v.reminder ? '' : ' hidden'}>
+          <label class="f-row"><span>Time</span><input type="time" name="reminder" value="${v.reminder || '08:00'}" class="time-chip"></label>
+          <p class="f-hint">You get a notification while Habit For Me is open. For reminders when it's closed, use <strong>Add reminder to calendar</strong> in the habit's ••• menu.</p>
+        </div>
+        <div class="f-row"><span id="memo-label">Write a memo after finishing</span><label class="switch"><input type="checkbox" name="memo" ${v.memo ? 'checked' : ''} aria-labelledby="memo-label"><span aria-hidden="true"></span></label></div>
+      </section>
+
+      <p class="form-error" role="alert" hidden></p>
+      <button type="submit" class="save-btn">${h ? 'Save' : 'Add habit'}</button>
+    </form>`);
   if (!h && !preset) sheet.querySelector('input[name="name"]').focus();
 }
 
-// Show the chosen icon and colour in the preview next to the name.
+/** Mood and note for one day. */
+function openDay(k) {
+  const e = entryOf(k);
+  showSheet(`
+    <form id="day-form" data-key="${k}" novalidate>
+      <div class="sheet-head">
+        ${closeBtn}
+        <h2 id="sheet-title">${esc(fmt(parseKey(k), { weekday: 'long', month: 'short', day: 'numeric' }))}</h2>
+        <span class="round-gap" aria-hidden="true"></span>
+      </div>
+      <p class="f-label" id="mood-label">How did you feel?</p>
+      <div class="moods" role="radiogroup" aria-labelledby="mood-label">
+        ${MOODS.map((m, i) => `<label class="opt mood-opt"><input type="radio" name="mood" value="${i + 1}" ${e.mood === i + 1 ? 'checked' : ''} aria-label="${m.label}"><span aria-hidden="true">${m.emoji}</span><small aria-hidden="true">${m.label}</small></label>`).join('')}
+      </div>
+      <label class="f-label" for="day-note">Note</label>
+      <textarea id="day-note" name="note" maxlength="1000" rows="6" placeholder="How did it go? What helped, and what got in the way?">${esc(e.note || '')}</textarea>
+      <button type="submit" class="save-btn">Save</button>
+      ${e.mood || e.note ? '<button type="button" class="text-danger" data-action="clear-day">Clear mood and note</button>' : ''}
+    </form>`);
+}
+
+/** A habit's memo for one day, with an emoji for how it felt. */
+function openMemo(h, k) {
+  const m = memoOf(h, k) || { text: '', emoji: '' };
+  showSheet(`
+    <form id="memo-form" data-id="${esc(h.id)}" data-key="${k}" style="--accent:${h.color};--accent-ink:${inkOn(h.color)}" novalidate>
+      <div class="sheet-head">
+        ${closeBtn}
+        <label class="date-pick"><span class="sr">Memo date</span><input type="date" name="date" value="${k}" max="${todayKey()}"></label>
+        <button type="submit" class="round ok" aria-label="Save memo">${ICON_SVG.tick}</button>
+      </div>
+      <h2 id="sheet-title" class="memo-title"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</h2>
+      <textarea name="text" maxlength="1000" rows="8" placeholder="Write your memo here…" aria-label="Memo">${esc(m.text)}</textarea>
+      <div class="emoji-row" role="radiogroup" aria-label="How did it feel?">
+        ${MEMO_EMOJIS.map((em) => `<label class="opt emo-opt"><input type="radio" name="emoji" value="${em}" ${m.emoji === em ? 'checked' : ''} aria-label="${em}"><span aria-hidden="true">${em}</span></label>`).join('')}
+      </div>
+      ${m.text || m.emoji ? '<button type="button" class="text-danger" data-action="del-memo">Delete memo</button>' : ''}
+    </form>`);
+  if (!m.text) sheet.querySelector('textarea').focus();
+}
+
+/** Type a number to add, or set the day's total. */
+function openKeypad(h) {
+  const c = countOf(h, ui.date);
+  showSheet(`
+    <form id="keypad-form" data-id="${esc(h.id)}" style="--accent:${h.color};--accent-ink:${inkOn(h.color)}" novalidate>
+      <div class="sheet-head">
+        ${closeBtn}
+        <h2 id="sheet-title"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</h2>
+        <span class="round-gap" aria-hidden="true"></span>
+      </div>
+      <p class="kp-now">Now ${c} of ${h.goal}${h.unit ? ` ${esc(h.unit)}` : ''}</p>
+      <input class="kp-input" type="number" name="amount" min="0" max="${MAX_COUNT}" inputmode="numeric" placeholder="1" aria-label="How many">
+      <div class="kp-quick">${[1, 5, 10, 33, 100].map((n) => `<button type="button" class="pchip" data-action="kp-quick" data-value="${n}">${n}</button>`).join('')}</div>
+      <button type="submit" class="save-btn" value="add">Add</button>
+      <button type="submit" class="ghost-btn" value="set">Set as the total</button>
+    </form>`);
+  sheet.querySelector('.kp-input').focus();
+}
+
+function openProfile() {
+  const s = state.settings;
+  const pics = AVATARS.includes(s.avatar) ? AVATARS : [s.avatar, ...AVATARS];
+  showSheet(`
+    <form id="profile-form" novalidate>
+      <div class="sheet-head">
+        ${closeBtn}
+        <h2 id="sheet-title">Profile</h2>
+        <span class="round-gap" aria-hidden="true"></span>
+      </div>
+      <section class="fcard"><label class="f-row"><span>Name</span><input type="text" name="name" maxlength="30" value="${esc(s.name)}" placeholder="Your name" autocomplete="nickname"></label></section>
+      <section class="fcard">
+        <p class="f-label pad">Picture</p>
+        <div class="icon-grid pb" role="radiogroup" aria-label="Picture">
+          ${pics.map((a) => `<label class="opt icon-opt"><input type="radio" name="avatar" value="${esc(a)}" ${a === s.avatar ? 'checked' : ''} aria-label="${esc(a)}"><span>${esc(a)}</span></label>`).join('')}
+        </div>
+      </section>
+      <button type="submit" class="save-btn">Save</button>
+    </form>`);
+}
+
+function openTips() {
+  showSheet(`
+    <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Tips</h2><span class="round-gap" aria-hidden="true"></span></div>
+    <ul class="tips">${TIPS.map(([ic, text]) => `<li><span class="tip-ic" aria-hidden="true">${ic}</span><span>${text}</span></li>`).join('')}</ul>`);
+}
+
+function openMoods() {
+  showSheet(`
+    <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Moods and notes</h2><span class="round-gap" aria-hidden="true"></span></div>
+    <div class="card flush">${recentNotes(60)}</div>`);
+}
+
+// Live updates inside the open form.
 sheet.addEventListener('change', (e) => {
   const form = e.target.form;
   if (!form) return;
-  if (e.target.name === 'icon') form.querySelector('.preview').textContent = e.target.value;
-  if (e.target.name === 'color') form.querySelector('.name-row').style.setProperty('--c', e.target.value);
-  if (e.target.name === 'remind') form.querySelector('.rem-time').hidden = !e.target.checked;
+  const name = e.target.name;
+  if (form.id === 'habit-form') {
+    if (name === 'icon') {
+      form.querySelector('.preview').textContent = e.target.value;
+      form.elements.icon_custom.value = '';
+    }
+    if (name === 'color') setFormColor(form, e.target.value);
+    if (name === 'remind') form.querySelector('.rem-time').hidden = !e.target.checked;
+    if (name === 'days') updateDaysNote(form);
+  }
+  if (form.id === 'memo-form' && name === 'date') {
+    const h = findHabit(form.dataset.id);
+    const k = e.target.value;
+    if (h && isKey(k) && k <= todayKey()) openMemo(h, k);
+    else e.target.value = form.dataset.key;
+  }
+});
+
+sheet.addEventListener('input', (e) => {
+  const form = e.target.form;
+  if (!form || form.id !== 'habit-form') return;
+  if (e.target.name === 'icon_custom' && e.target.value.trim()) form.querySelector('.preview').textContent = e.target.value.trim();
+  if (e.target.name === 'goal' || e.target.name === 'unit') updateDaysNote(form);
 });
 
 sheet.addEventListener('submit', (e) => {
   e.preventDefault();
   const form = e.target;
   const fd = new FormData(form);
-  if (form.id === 'note-form') {
-    setJournal(form.dataset.key, { note: String(fd.get('note') || '').trim().slice(0, 1000) });
+
+  if (form.id === 'day-form') {
+    setJournal(form.dataset.key, {
+      mood: clampInt(fd.get('mood'), 0, 5, 0),
+      note: String(fd.get('note') || '').trim().slice(0, 1000),
+    });
     sheet.close();
     render();
-    toast('Note saved');
+    toast('Saved');
     return;
   }
+
+  if (form.id === 'memo-form') {
+    const h = findHabit(form.dataset.id);
+    if (h) {
+      const text = String(fd.get('text') || '').trim().slice(0, 1000);
+      const emoji = String(fd.get('emoji') || '');
+      setMemo(h, form.dataset.key, { text, emoji });
+      toast(text || emoji ? 'Memo saved' : 'Memo removed');
+    }
+    sheet.close();
+    render();
+    return;
+  }
+
+  if (form.id === 'keypad-form') {
+    const h = findHabit(form.dataset.id);
+    if (h && ui.date <= todayKey()) {
+      const mode = e.submitter && e.submitter.value === 'set' ? 'set' : 'add';
+      const raw = String(fd.get('amount') || '').trim();
+      const amount = clampInt(raw === '' ? (mode === 'add' ? 1 : 0) : raw, 0, MAX_COUNT, 0);
+      const before = countOf(h, ui.date);
+      const after = mode === 'set' ? amount : Math.min(before + amount, MAX_COUNT);
+      setCount(h, ui.date, after);
+      sheet.close();
+      render();
+      afterChange(h, before, after, ui.date);
+    } else sheet.close();
+    return;
+  }
+
+  if (form.id === 'profile-form') {
+    state.settings.name = String(fd.get('name') || '').trim().slice(0, 30);
+    const pic = String(fd.get('avatar') || '');
+    if (pic) state.settings.avatar = pic;
+    save();
+    sheet.close();
+    render();
+    return;
+  }
+
+  // The add/edit habit form.
   const name = String(fd.get('name') || '').trim();
   const days = fd.getAll('days').map(Number).sort();
   const error = form.querySelector('.form-error');
-
   const problem = !name ? 'Please give your habit a name.' : !days.length ? 'Pick at least one day.' : '';
   if (problem) {
     error.textContent = problem;
@@ -999,17 +1539,23 @@ sheet.addEventListener('submit', (e) => {
     return;
   }
 
+  const custom = String(fd.get('icon_custom') || '').trim();
   const data = {
     name: name.slice(0, 60),
-    icon: String(fd.get('icon') || ICONS[0]),
-    color: String(fd.get('color') || COLORS[0]),
-    goal: clampInt(fd.get('goal'), 1, 50, 1),
+    desc: String(fd.get('desc') || '').trim().slice(0, 40),
+    icon: (custom || String(fd.get('icon') || ICONS[0])).slice(0, 8),
+    color: String(fd.get('color') || NEW_COLORS[0]),
+    goal: clampInt(fd.get('goal'), 1, MAX_COUNT, 1),
+    unit: String(fd.get('unit') || '').trim().slice(0, 12),
     days,
+    time: String(fd.get('time') || 'any'),
+    group: String(fd.get('group') || '').trim().slice(0, 24),
     reminder: fd.get('remind') && TIME_RE.test(String(fd.get('reminder'))) ? String(fd.get('reminder')) : '',
+    memo: Boolean(fd.get('memo')),
   };
   const existing = ui.editing && findHabit(ui.editing);
   if (existing) Object.assign(existing, data);
-  else state.habits.push({ id: newId(), createdAt: todayKey(), ...data });
+  else state.habits.push({ id: newId(), createdAt: todayKey(), archived: false, ...data });
 
   save();
   sheet.close();
@@ -1023,29 +1569,6 @@ sheet.addEventListener('click', (e) => {
   if (e.target === sheet) sheet.close();
 });
 
-/** The sheet for writing a note about one day. */
-function openNote(k) {
-  const e = entryOf(k);
-  sheet.innerHTML = `
-    <div class="sheet-inner">
-      <div class="grabber" aria-hidden="true"></div>
-      <form id="note-form" data-key="${k}" novalidate>
-        <div class="sheet-head">
-          <button type="button" class="x-btn" data-action="close-sheet" aria-label="Close">${ICON_SVG.close}</button>
-          <h2 id="sheet-title">${esc(fmt(parseKey(k), { weekday: 'long', month: 'short', day: 'numeric' }))}</h2>
-          <span aria-hidden="true"></span>
-        </div>
-        <label class="fgroup"><span class="flabel">Note</span>
-          <textarea name="note" maxlength="1000" rows="6" placeholder="How did it go? What helped, and what got in the way?">${esc(e.note || '')}</textarea>
-        </label>
-        <button type="submit" class="primary">Save note</button>
-        ${e.note ? '<button type="button" class="text-danger" data-action="clear-note">Delete note</button>' : ''}
-      </form>
-    </div>`;
-  sheet.showModal();
-  sheet.querySelector('textarea').focus();
-}
-
 function newId() {
   return window.crypto && crypto.randomUUID
     ? crypto.randomUUID()
@@ -1054,19 +1577,41 @@ function newId() {
 
 /* ---------- 7. Actions ---------- */
 
+/** After a count changes: a little buzz, a cheer when everything is done, and the memo if asked for. */
+function afterChange(h, before, after, k) {
+  const finished = before < h.goal && after >= h.goal;
+  if (navigator.vibrate) navigator.vibrate(finished ? 18 : 8);
+  if (!finished) return;
+  if (k === todayKey()) {
+    const due = active().filter((x) => isDue(x, parseKey(k)));
+    if (due.length > 1 && due.every((x) => isDone(x, k))) toast('All done for today! 🎉');
+  }
+  if (h.memo) openMemo(h, k);
+}
+
+/** The round button on Today: +1, or done/undo for once-a-day habits. */
 function tick(h) {
   const k = ui.date;
   if (k > todayKey()) return;
   const c = countOf(h, k);
-  const next = c >= h.goal ? 0 : c + 1; // tapping a finished habit resets it
-  setCount(h, k, next);
-  if (navigator.vibrate) navigator.vibrate(next >= h.goal ? 18 : 8);
-  render();
-
-  if (next >= h.goal && k === todayKey()) {
-    const due = state.habits.filter((x) => isDue(x, parseKey(k)));
-    if (due.length > 1 && due.every((x) => isDone(x, k))) toast('All done for today! 🎉');
+  if (c >= h.goal && h.goal > 1) {
+    // Bigger counts are changed on the habit's own page, so one tap never wipes them.
+    openCounter(h);
+    toast('Done! Change the count here if you need to.');
+    return;
   }
+  const next = c >= h.goal ? 0 : c + 1;
+  setCount(h, k, next);
+  render();
+  afterChange(h, c, next, k);
+}
+
+function openCounter(h) {
+  ui.detail = h.id;
+  ui.stat = false;
+  ui.menu = null;
+  render();
+  window.scrollTo(0, 0);
 }
 
 function downloadFile(content, type, filename) {
@@ -1092,7 +1637,7 @@ function downloadCalendar(h) {
   while (!h.days.includes(first.getDay())) first = addDays(first, 1);
   const [hh, mm] = h.reminder.split(':');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
-  const text = (v) => String(v).replace(/[\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
+  const text = (v) => String(v).replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
   const fold = (line) => {
     // Calendar files wrap lines longer than 75 bytes.
     const parts = [];
@@ -1146,7 +1691,7 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     state = normalize(data);
     save();
     applyTheme();
-    ui.detail = null;
+    Object.assign(ui, { detail: null, stat: false, pick: 'all', filter: 'all', menu: null });
     render();
     toast(`Backup restored: ${plural(state.habits.length, 'habit')}`);
   } catch (err) {
@@ -1156,19 +1701,31 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
 
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
+  // A tap anywhere outside an open menu closes it.
+  if (ui.menu && !e.target.closest('.popover') && !(el && el.dataset.action === 'menu')) {
+    ui.menu = null;
+    render();
+  }
   if (!el || el.disabled) return;
   const action = el.dataset.action;
+  const value = el.dataset.value;
   const h = el.dataset.id ? findHabit(el.dataset.id) : null;
   if (action !== 'delete' && action !== 'reset') ui.confirm = null;
 
   switch (action) {
     case 'tab':
+      if (value === undefined && el.dataset.tab === 'today' && ui.tab === 'today' && !ui.detail && el.classList.contains('tab')) {
+        openSheet(null); // the pink + on Today
+        break;
+      }
       ui.tab = el.dataset.tab;
-      ui.detail = null;
+      Object.assign(ui, { detail: null, stat: false, menu: null });
+      if (sheet.open) sheet.close();
       render();
       window.scrollTo(0, 0);
       break;
     case 'add':
+      ui.menu = null;
       openSheet(null);
       break;
     case 'suggest':
@@ -1178,27 +1735,97 @@ document.addEventListener('click', (e) => {
       if (h) tick(h);
       break;
     case 'open':
+      if (h) openCounter(h);
+      break;
+    case 'back':
+      Object.assign(ui, { detail: null, stat: false, menu: null });
+      render();
+      break;
+    case 'menu':
+      ui.menu = ui.menu === el.dataset.menu ? null : el.dataset.menu;
+      render();
+      break;
+    case 'filter':
+      ui.filter = value;
+      ui.menu = null;
+      render();
+      break;
+    case 'pick':
+      ui.pick = value;
+      ui.menu = null;
+      render();
+      break;
+    case 'keypad':
+      if (h && ui.date <= todayKey()) openKeypad(h);
+      break;
+    case 'add-one': {
+      if (!h || ui.date > todayKey()) break;
+      const before = countOf(h, ui.date);
+      if (before >= MAX_COUNT) break;
+      setCount(h, ui.date, before + 1);
+      render();
+      afterChange(h, before, before + 1, ui.date);
+      break;
+    }
+    case 'complete': {
+      if (!h || ui.date > todayKey()) break;
+      const before = countOf(h, ui.date);
+      if (before >= h.goal && h.goal > 1) {
+        openKeypad(h);
+        break;
+      }
+      const after = before >= h.goal ? 0 : h.goal;
+      setCount(h, ui.date, after);
+      render();
+      afterChange(h, before, after, ui.date);
+      break;
+    }
+    case 'memo':
+      if (h) openMemo(h, el.dataset.key || ui.date);
+      break;
+    case 'del-memo': {
+      const form = el.closest('form');
+      const mh = findHabit(form.dataset.id);
+      if (mh) setMemo(mh, form.dataset.key, null);
+      sheet.close();
+      render();
+      toast('Memo deleted');
+      break;
+    }
+    case 'stat':
       if (!h) break;
-      ui.detail = h.id;
-      ui.month = ui.date.slice(0, 7);
+      Object.assign(ui, { stat: true, month: ui.date.slice(0, 7), year: Number(ui.date.slice(0, 4)), memosAll: false, menu: null });
       render();
       window.scrollTo(0, 0);
       break;
-    case 'back':
-      ui.detail = null;
+    case 'close-stat':
+      ui.stat = false;
       render();
+      window.scrollTo(0, 0);
       break;
     case 'edit':
+      ui.menu = null;
+      render();
       if (h) openSheet(h);
+      break;
+    case 'archive':
+      if (!h) break;
+      h.archived = !h.archived;
+      save();
+      if (h.archived && ui.detail === h.id) Object.assign(ui, { detail: null, stat: false });
+      ui.menu = null;
+      render();
+      toast(h.archived ? 'Archived. Restore it any time from the habits list.' : `${h.icon} ${h.name} is back on Today`);
       break;
     case 'delete':
       if (!h) break;
       if (ui.confirm === `delete:${h.id}`) {
         state.habits = state.habits.filter((x) => x !== h);
         delete state.log[h.id];
+        delete state.memos[h.id];
         save();
-        ui.confirm = null;
-        ui.detail = null;
+        Object.assign(ui, { confirm: null, detail: null, stat: false, menu: null });
+        if (ui.pick === h.id) ui.pick = 'all';
         render();
         toast('Habit deleted');
       } else {
@@ -1210,79 +1837,105 @@ document.addEventListener('click', (e) => {
       ui.date = el.dataset.key;
       render();
       break;
-    case 'future-day':
-      toast("You can't check off a future day");
-      break;
     case 'go-today':
       ui.date = todayKey();
       render();
       break;
     case 'month': {
-      const [y, m] = ui.month.split('-').map(Number);
-      const d = new Date(y, m - 1 + Number(el.dataset.delta), 1);
-      ui.month = keyOf(d).slice(0, 7);
+      const next = shiftMonth(ui.month, Number(el.dataset.delta));
+      if (next <= todayKey().slice(0, 7)) ui.month = next;
       render();
       break;
     }
+    case 'year':
+      ui.year = Math.min(new Date().getFullYear(), ui.year + Number(el.dataset.delta));
+      render();
+      break;
     case 'cal': {
       const k = el.dataset.key;
       if (!h || k > todayKey()) break;
-      setCount(h, k, isDone(h, k) ? 0 : h.goal);
+      const before = countOf(h, k);
+      const after = before >= h.goal ? 0 : h.goal;
+      setCount(h, k, after);
+      render();
+      afterChange(h, before, after, k);
+      break;
+    }
+    case 'trend':
+      ui.trend = value;
+      render();
+      break;
+    case 'memos-all':
+      ui.memosAll = !ui.memosAll;
+      render();
+      break;
+    case 'stat-view':
+      ui.yearView = !ui.yearView;
+      render();
+      break;
+    case 'smonth': {
+      const next = shiftMonth(ui.smonth, Number(el.dataset.delta));
+      if (next <= todayKey().slice(0, 7)) ui.smonth = next;
       render();
       break;
     }
-    case 'range':
-      ui.range = el.dataset.range;
-      ui.anchor = todayKey();
-      render();
-      break;
-    case 'period': {
-      const a = parseKey(ui.anchor);
-      const n = Number(el.dataset.delta);
-      let d;
-      if (ui.range === 'month') d = new Date(a.getFullYear(), a.getMonth() + n, 1);
-      else if (ui.range === 'year') d = new Date(a.getFullYear() + n, 0, 1);
-      else d = addDays(a, 7 * n);
-      const k = keyOf(d);
-      ui.anchor = k > todayKey() ? todayKey() : k;
+    case 'syear': {
+      const y = Number(ui.smonth.slice(0, 4)) + Number(el.dataset.delta);
+      const now = todayKey().slice(0, 7);
+      ui.smonth = `${y}-${ui.smonth.slice(5)}` > now ? now : `${y}-${ui.smonth.slice(5)}`;
       render();
       break;
     }
-    case 'mood': {
-      const v = Number(el.dataset.v);
-      setJournal(ui.date, { mood: entryOf(ui.date).mood === v ? 0 : v });
+    case 'open-month':
+      ui.smonth = value;
+      ui.yearView = false;
       render();
       break;
-    }
-    case 'note':
-      openNote(ui.date);
+    case 'rate-mode':
+      ui.rateYear = !ui.rateYear;
+      render();
       break;
-    case 'clear-note':
-      setJournal(el.closest('form').dataset.key, { note: '' });
+    case 'day':
+      openDay(el.dataset.key || ui.date);
+      break;
+    case 'clear-day':
+      setJournal(el.closest('form').dataset.key, { mood: 0, note: '' });
       sheet.close();
       render();
-      toast('Note deleted');
+      toast('Cleared');
+      break;
+    case 'moods':
+      openMoods();
       break;
     case 'goto-day':
       ui.date = el.dataset.key;
-      ui.tab = 'today';
+      Object.assign(ui, { tab: 'today', detail: null, stat: false, menu: null });
+      if (sheet.open) sheet.close();
       render();
       window.scrollTo(0, 0);
       break;
+    case 'profile':
+      openProfile();
+      break;
+    case 'tips':
+      openTips();
+      break;
     case 'ics':
+      ui.menu = null;
+      render();
       if (h && h.reminder) downloadCalendar(h);
       break;
     case 'notif':
       askNotifications();
       break;
     case 'theme':
-      state.settings.theme = el.dataset.value;
+      state.settings.theme = value;
       save();
       applyTheme();
       render();
       break;
     case 'week-start':
-      state.settings.weekStart = Number(el.dataset.value);
+      state.settings.weekStart = Number(value);
       save();
       render();
       break;
@@ -1297,7 +1950,7 @@ document.addEventListener('click', (e) => {
         state = defaultState();
         save();
         applyTheme();
-        Object.assign(ui, { confirm: null, tab: 'today', date: todayKey(), anchor: todayKey(), detail: null });
+        Object.assign(ui, { confirm: null, tab: 'today', date: todayKey(), detail: null, stat: false, pick: 'all', filter: 'all' });
         render();
         toast('All data deleted');
       } else {
@@ -1311,20 +1964,52 @@ document.addEventListener('click', (e) => {
     case 'step': {
       const form = el.closest('form');
       const input = form.elements.goal;
-      const v = clampInt(Number(input.value) + Number(el.dataset.delta), 1, 50, 1);
-      input.value = v;
-      form.querySelector('output').textContent = v;
+      input.value = clampInt(Number(input.value) + Number(el.dataset.delta), 1, MAX_COUNT, 1);
+      updateDaysNote(form);
       break;
     }
     case 'preset': {
-      const set = el.dataset.days.split(',').map(Number);
-      el.closest('form').querySelectorAll('input[name="days"]').forEach((i) => {
+      const form = el.closest('form');
+      const set = value.split(',').map(Number);
+      form.querySelectorAll('input[name="days"]').forEach((i) => {
         i.checked = set.includes(Number(i.value));
       });
+      updateDaysNote(form);
+      break;
+    }
+    case 'toggle-pick': {
+      const box = sheet.querySelector(`#${value}`);
+      box.hidden = !box.hidden;
+      el.setAttribute('aria-expanded', String(!box.hidden));
+      break;
+    }
+    case 'pal': {
+      const form = el.closest('form');
+      form.querySelectorAll('.pal').forEach((p) => {
+        p.hidden = p.dataset.pal !== value;
+      });
+      form.querySelectorAll('.pal-tabs .pchip').forEach((b) => {
+        const on = b === el;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+      break;
+    }
+    case 'kp-quick': {
+      const input = el.closest('form').elements.amount;
+      input.value = value;
+      input.focus();
       break;
     }
     default:
       break;
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && ui.menu && !sheet.open) {
+    ui.menu = null;
+    render();
   }
 });
 
@@ -1334,14 +2019,19 @@ function toast(message) {
   el.textContent = message;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 function applyTheme() {
   const t = state.settings.theme;
   if (t === 'system') delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = t;
+  const dark = t === 'dark' || (t === 'system' && darkQuery.matches);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = dark ? '#000000' : '#f2f2f7';
 }
+if (darkQuery.addEventListener) darkQuery.addEventListener('change', applyTheme);
 
 // If the app stays open past midnight, move "Today" to the new day.
 let lastToday = todayKey();
@@ -1349,11 +2039,11 @@ function checkDayChange() {
   const t = todayKey();
   if (t === lastToday) return;
   if (ui.date === lastToday) ui.date = t;
-  if (ui.anchor === lastToday) ui.anchor = t;
   lastToday = t;
   render();
 }
-/* Reminders: a notification at the chosen time while the app is open. */
+
+/* ---------- 8. Reminders: a notification at the chosen time while the app is open ---------- */
 
 const REMINDED_KEY = 'habit-for-me:reminded'; // which reminders were already sent today
 
@@ -1369,7 +2059,7 @@ function checkReminders() {
   }
   if (!sent || sent.day !== tk || !Array.isArray(sent.ids)) sent = { day: tk, ids: [] };
   let changed = false;
-  for (const h of state.habits) {
+  for (const h of active()) {
     if (!h.reminder || sent.ids.includes(h.id)) continue;
     const [hh, mm] = h.reminder.split(':').map(Number);
     const late = mins - (hh * 60 + mm);

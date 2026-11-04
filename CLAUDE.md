@@ -9,9 +9,10 @@ and see streaks and progress. See `README.md` for the feature list.
 
 ## Status
 
-Version 2 is built and working: same features as version 1, with a new look that follows
-the Habit Tracker app, a new All habits screen, and Weekly / Monthly / Yearly stats.
-Also: reminders, and a mood and note for each day.
+Version 3 is built and working: the dark iPhone look of the Habit Tracker app, made from the owner's
+28 screenshots. New in v3: a description, unit, group and time of day for each habit, counts up to 999,
+a counter page and a Stat page for each habit, memos per habit, archive, and a new Stats screen.
+Still there from v2: reminders, and a mood and note for each day.
 
 ## Decisions (answered by the owner)
 
@@ -26,21 +27,27 @@ Also: reminders, and a mood and note for each day.
    Keep our own name, icon and artwork: no copied images, logos or premium/paywall screens.
    The owner's screen recording of it is in their Google Drive
    ("Screen Recording 2026-11-04 at 20.03.00.mov", 368 MB, too big for the Drive connector).
+   They also shared 28 iPhone screenshots (Drive folder "whatsapp unknown"), which v3 follows.
+   Dark mode is the default; Light and Auto stay in Me → Settings.
 6. **Screens:** it must fit phones, tablets/iPads and laptops.
 
 ## Code map
 
-- `index.html`: page shell (floating tab bar: Today, All habits, Stats, Me; sheet dialog; toast)
+- `index.html`: page shell (floating tab bar: Today, Stats, All habits, Me; sheet dialog; toast).
+  On Today, the Today tab turns into a pink **+** that adds a habit.
 - `app.js`: all logic, in numbered sections: constants, date helpers, saving/loading,
-  habit maths (streaks, rates), screens (Today, All habits, Details, Stats, Me),
-  add/edit sheet, actions (one delegated click handler using `data-action`)
-- `styles.css`: colour tokens on `:root`, dark mode via `prefers-color-scheme`
-  and `[data-theme]`. Bigger screens at 640px (tablet), 768px and 1024px (iPad landscape, laptop).
+  habit maths (streaks, rates, `periodStats`), screens (Today, Stats, All habits, Me, a habit's
+  counter page and Stat page), sheets (add/edit, memo, mood and note, keypad, tips, profile),
+  actions (one delegated click handler using `data-action`), reminders.
+  Don't name a global function `top`, `name` or `status`: the browser already uses those names.
+- `styles.css`: colour tokens on `:root` (light), dark tokens under `prefers-color-scheme` and
+  `[data-theme="dark"]`. Bigger screens at 640px (tablet) and 900px (iPad landscape, laptop).
 - `sw.js`: network-first offline cache. **Bump `CACHE` and update `FILES`** when adding,
   renaming or removing files.
-- Data shape: `{ version, habits: [{ id, name, icon, color, goal, days: [0-6], createdAt, reminder: "HH:MM" or "" }],
-  log: { habitId: { "YYYY-MM-DD": count } }, journal: { "YYYY-MM-DD": { mood: 1-5, note } },
-  settings: { theme, weekStart } }`.
+- Data shape (version 3): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,
+  days: [0-6], time: any|morning|afternoon|evening, group, reminder: "HH:MM" or "", memo, archived,
+  createdAt }], log: { habitId: { "YYYY-MM-DD": count } }, memos: { habitId: { "YYYY-MM-DD": { text, emoji } } },
+  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart, name, avatar } }`.
   Keep `normalize()` able to read older data so people's habits are never lost.
 
 ## Reminders (how they work)
@@ -50,21 +57,27 @@ Also: reminders, and a mood and note for each day.
   1. While the app is open (even in the background), `checkReminders()` runs every 30 seconds and
      sends a notification once per habit per day, within an hour after its time, if the habit is
      due and not done. Sent reminders are remembered in localStorage under `habit-for-me:reminded`.
-  2. **Add to calendar** on a habit's page downloads an `.ics` file with a repeating event and an
-     alert, so the phone's calendar reminds the owner even when the app is closed.
+  2. **Add reminder to calendar** in a habit's ••• menu downloads an `.ics` file with a repeating
+     event and an alert, so the phone's calendar reminds the owner even when the app is closed.
 - iPhone: notifications only work after the app is added to the Home Screen (iOS 16.4+).
 
-## Look and feel (from the Habit Tracker app)
+## Look and feel (from the Habit Tracker app on iPhone, dark mode)
 
-- Pink accent `--accent` (#db3360, #ff6b8a in dark mode), light grey page, white rounded cards.
-- Today: centred title with a pink round **+** on the right, a scrolling row of dates
-  (dashed circles, filled pink when the day is complete), and habit bars that fill with the
-  habit's colour (`--p` = progress) with a white round check button on the right.
-- Floating pill-shaped menu at the bottom with icon-only tabs.
-- Stats: Weekly / Monthly / Yearly tabs, a script title with sun and moon, a yellow date pill,
-  coloured squares, "perfect" badges and coloured numbers.
-- Me: pink gradient at the top, white cards for This week, Settings, Your data.
-- Add/edit: grouped white cards on a lavender-grey sheet, pink pill buttons.
+- Black page `#000`, cards `#171717`, sheets `#0b0b0b`, pink accent `--accent` `#fd5c7d`
+  (`#f0436a` in light mode). Habit colours are mixed with `--mix` (black, or white in light mode).
+- Today: pink **All ▾** filter pill on the left, title in the middle, mood face on the right;
+  a row of days (two-letter day name over a ring that fills pink, selected day boxed); habit cards
+  tinted 20% with the habit's colour that fill as you go (`--p`), a "0/1" chip, the description,
+  and a round check (or +) button. A 💡 tips button floats bottom-left.
+- Habit counter page: big ring with the emoji, count and "/goal", a + inside the ring, an **Add**
+  pill (opens the keypad) and a check button in the habit's colour, Memo and Stat buttons below.
+- Habit Stat page: month calendar, Yearly status grid, 8 coloured tiles, Memos, Trending
+  (1 Week / 1 Month / 1 Year) and Comparison (last week vs this week) bar charts.
+- Stats: "Overall ▾" picker and a row of habit emoji chips, month calendar with progress rings
+  (or the whole year), a pink rate ring with ⇄ for month or year, and four numbers.
+- Me: avatar and name, Moods week (dashed circles), a gradient Daily quote card, Settings cards.
+- Add/edit: grouped dark cards, colour picker with Bright and Soft sets, day circles, time-of-day
+  chips, switches; the form takes the habit's colour as its accent.
 
 ## Working rules
 
@@ -83,4 +96,4 @@ Also: reminders, and a mood and note for each day.
 
 - Turn on GitHub Pages (needs the repo to be public on a free GitHub plan).
 - Pick the next feature from "Ideas for later" in `README.md`. Features the Habit Tracker app
-  has that we don't yet: habit groups, widgets.
+  has that we don't yet: quit habits, widgets, friends, Apple Health sync (not possible in a web app).
