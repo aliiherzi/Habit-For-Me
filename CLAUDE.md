@@ -65,7 +65,8 @@ Still there from v2: reminders, and a mood and note for each day.
 
 - Black page `#000`, cards `#171717`, sheets `#0b0b0b`, pink accent `--accent` `#fd5c7d`
   (`#f0436a` in light mode). Habit colours are mixed with `--mix` (black, or white in light mode).
-- Today: pink **All ▾** filter pill on the left, title in the middle, mood face on the right;
+- Today: pink **All ▾** filter pill on the left, title in the middle, a sun/moon light-dark button and
+  the mood face on the right;
   a row of days (two-letter day name over a ring that fills pink, selected day boxed); habit cards
   tinted 20% with the habit's colour that fill as you go (`--p`), a "0/1" chip, the description,
   and a round check (or +) button. A 💡 tips button floats bottom-left.

@@ -100,6 +100,8 @@ const ICON_SVG = {
   avg: svg('<path d="M4 17l5-5 4 3 7-8"/>'),
   pie: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12h8.5"/>'),
   memo: svg('<rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 8.5h6M9 12.5h6M9 16.5h3.5"/>'),
+  sun: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>'),
+  moon: svg('<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>'),
 };
 
 /* ---------- 2. Date helpers ---------- */
@@ -507,9 +509,9 @@ function render() {
 }
 
 /** Top bar: buttons on the left, title in the middle, buttons on the right, then an open menu. */
-function topBar(title, left = '', right = '', extra = '') {
+function topBar(title, left = '', right = '', extra = '', cls = '') {
   return `
-    <header class="top">
+    <header class="top${cls ? ` ${cls}` : ''}">
       <div class="top-side">${left}</div>
       <h1 class="top-title">${title}</h1>
       <div class="top-side end">${right}</div>
@@ -570,11 +572,13 @@ function renderToday() {
   const title = isToday ? 'Today' : isYesterday ? 'Yesterday' : fmt(sel, { weekday: 'short', month: 'short', day: 'numeric' });
   const mood = entryOf(ui.date).mood;
   const moodBtn = `<button class="round mood-btn" data-action="day" aria-label="${esc(`Mood and note for ${title}`)}" title="Mood and note">${mood ? `<span class="emo" aria-hidden="true">${MOODS[mood - 1].emoji}</span>` : ICON_SVG.smile}</button>`;
+  const dark = isDarkNow();
+  const themeBtn = roundBtn('toggle-theme', dark ? ICON_SVG.sun : ICON_SVG.moon, dark ? 'Switch to light mode' : 'Switch to dark mode');
   const list = active();
 
   if (!list.length) {
     const archivedOnly = state.habits.length > 0;
-    return `${topBar('Today', '', moodBtn)}
+    return `${topBar('Today', '', themeBtn + moodBtn, '', 'today-top')}
       <section class="empty">
         <div class="empty-art" aria-hidden="true">🌱</div>
         <h2>${archivedOnly ? 'No active habits' : 'No habits yet'}</h2>
@@ -594,7 +598,7 @@ function renderToday() {
       <span>${esc(filterLabel())}</span>${ICON_SVG.down}
     </button>`;
 
-  return `${topBar(esc(title), filterBtn, moodBtn, ui.menu === 'filter' ? filterMenu() : '')}
+  return `${topBar(esc(title), filterBtn, themeBtn + moodBtn, ui.menu === 'filter' ? filterMenu() : '', 'today-top')}
     ${dateStrip()}
     ${due.length
       ? `<ul class="hlist">${due.map((h) => habitCard(h, ui.date)).join('')}</ul>`
@@ -1928,6 +1932,12 @@ document.addEventListener('click', (e) => {
     case 'notif':
       askNotifications();
       break;
+    case 'toggle-theme':
+      state.settings.theme = isDarkNow() ? 'light' : 'dark';
+      save();
+      applyTheme();
+      render();
+      break;
     case 'theme':
       state.settings.theme = value;
       save();
@@ -2023,15 +2033,21 @@ function toast(message) {
 }
 
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const isDarkNow = () => state.settings.theme === 'dark' || (state.settings.theme === 'system' && darkQuery.matches);
 function applyTheme() {
   const t = state.settings.theme;
   if (t === 'system') delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = t;
-  const dark = t === 'dark' || (t === 'system' && darkQuery.matches);
+  const dark = isDarkNow();
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = dark ? '#000000' : '#f2f2f7';
 }
-if (darkQuery.addEventListener) darkQuery.addEventListener('change', applyTheme);
+if (darkQuery.addEventListener) {
+  darkQuery.addEventListener('change', () => {
+    applyTheme();
+    render();
+  });
+}
 
 // If the app stays open past midnight, move "Today" to the new day.
 let lastToday = todayKey();

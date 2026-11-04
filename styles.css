@@ -163,6 +163,10 @@ main {
   font-weight: 600;
   white-space: nowrap;
 }
+.filter-pill { max-width: 128px; }
+/* Today has two buttons on the right (light/dark and mood), so its sides size to fit them. */
+.today-top { grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); }
+.today-top .top-side.end { gap: 6px; }
 .filter-pill span { overflow: hidden; text-overflow: ellipsis; }
 .filter-pill svg { flex: none; width: 15px; height: 15px; }
 
