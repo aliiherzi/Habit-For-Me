@@ -32,7 +32,7 @@ Check off your habits every day, build streaks, and see your progress.
 
 1. On GitHub, open this repo, then **Settings → Pages**.
 2. Under **Build and deployment**, pick **Deploy from a branch**, choose **main** and **/ (root)**, then **Save**.
-3. After a minute or two the app is live at **https://aliiherzi.github.io/habit-for-me/**
+3. After a minute or two the app is live at **https://aliiherzi.github.io/Habit-For-Me/**
 
 > On a free GitHub account, Pages only works for **public** repos. Making the repo
 > public shows the code only. Your habit data never leaves your device.
