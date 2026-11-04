@@ -870,6 +870,54 @@ textarea {
 .tips li + li { border-top: 1px solid var(--line); }
 .tip-ic { flex: none; font-size: 22px; }
 
+/* ---------- Unit picker (opens over the add/edit form) ---------- */
+
+.unit-val { margin-left: auto; font-size: 15px; color: var(--muted); }
+.unit-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px calc(env(safe-area-inset-bottom) + 12px);
+  background: var(--sheet);
+}
+.unit-tabs { flex: none; display: flex; gap: 8px; margin: 0 -16px 14px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+.unit-tabs::-webkit-scrollbar { display: none; }
+.unit-tabs .pchip { flex: none; padding: 9px 16px; font-size: 15px; }
+.unit-tabs.dim { opacity: 0.4; }
+.unit-list { flex: 1; min-height: 0; overflow-y: auto; }
+.u-card { padding: 0 14px; border-radius: 16px; background: var(--card); }
+.u-item + .u-item { border-top: 1px solid var(--line); }
+.u-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; padding: 8px 0; font-size: 16px; text-align: left; }
+.u-name { min-width: 0; display: flex; flex-direction: column; }
+.u-name small { font-size: 12px; color: var(--muted); }
+.u-unit { flex: none; font-size: 14px; color: var(--muted); }
+.u-row.on .u-unit, .u-row.own .u-unit { font-weight: 700; color: var(--accent); }
+.u-row svg { flex: none; width: 16px; height: 16px; color: var(--faint); transition: transform 0.2s; }
+.u-row[aria-expanded="true"] svg { transform: rotate(90deg); }
+.u-choices { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 12px; }
+.u-choices .pchip { min-width: 52px; padding: 8px 14px; text-align: center; }
+/* On bigger screens all the kinds fit on two lines, so no sideways scrolling with a mouse. */
+@media (min-width: 640px) {
+  .unit-tabs { flex-wrap: wrap; overflow: visible; }
+}
+.u-empty { padding: 18px 4px; text-align: center; color: var(--muted); }
+.unit-search { flex: none; position: relative; display: block; margin-top: 12px; }
+.unit-search svg { position: absolute; top: 50%; left: 14px; width: 20px; height: 20px; color: var(--muted); transform: translateY(-50%); pointer-events: none; }
+.unit-search input {
+  width: 100%;
+  height: 46px;
+  padding: 0 16px 0 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 23px;
+  background: var(--card);
+  font-size: 16px;
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* ---------- Toast ---------- */
 
 .toast {

@@ -81,6 +81,9 @@ Still there from v2: reminders, and a mood and note for each day.
 - Stats: "Overall ▾" picker and a row of habit emoji chips, month calendar with progress rings
   (or the whole year), a pink rate ring with ⇄ for month or year, and four numbers.
 - Me: avatar and name, Moods week (dashed circles), a gradient Daily quote card, Settings cards.
+- Unit picker (from the form's Unit row): pink kind chips (Activity, Body Measurements, Nutrition Intake,
+  Mind, Workout, Faith, Other), a card of items showing their measurement (or › to choose one), and a
+  search box at the bottom that can also take your own unit. It is a panel over the form (`UNIT_KINDS`).
 - Add/edit: grouped dark cards, colour picker with Bright and Soft sets, day circles, time-of-day
   chips, switches; the form takes the habit's colour as its accent.
 
