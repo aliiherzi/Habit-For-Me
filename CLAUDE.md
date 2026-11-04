@@ -11,6 +11,7 @@ and see streaks and progress. See `README.md` for the feature list.
 
 Version 2 is built and working: same features as version 1, with a new look that follows
 the Habit Tracker app, a new All habits screen, and Weekly / Monthly / Yearly stats.
+Also: reminders, and a mood and note for each day.
 
 ## Decisions (answered by the owner)
 
@@ -37,9 +38,21 @@ the Habit Tracker app, a new All habits screen, and Weekly / Monthly / Yearly st
   and `[data-theme]`. Bigger screens at 640px (tablet), 768px and 1024px (iPad landscape, laptop).
 - `sw.js`: network-first offline cache. **Bump `CACHE` and update `FILES`** when adding,
   renaming or removing files.
-- Data shape: `{ version, habits: [{ id, name, icon, color, goal, days: [0-6], createdAt }],
-  log: { habitId: { "YYYY-MM-DD": count } }, settings: { theme, weekStart } }`.
+- Data shape: `{ version, habits: [{ id, name, icon, color, goal, days: [0-6], createdAt, reminder: "HH:MM" or "" }],
+  log: { habitId: { "YYYY-MM-DD": count } }, journal: { "YYYY-MM-DD": { mood: 1-5, note } },
+  settings: { theme, weekStart } }`.
   Keep `normalize()` able to read older data so people's habits are never lost.
+
+## Reminders (how they work)
+
+- A web app can't send notifications while it's closed without a push server, and we have no
+  server (decision 3). So reminders work in two ways:
+  1. While the app is open (even in the background), `checkReminders()` runs every 30 seconds and
+     sends a notification once per habit per day, within an hour after its time, if the habit is
+     due and not done. Sent reminders are remembered in localStorage under `habit-for-me:reminded`.
+  2. **Add to calendar** on a habit's page downloads an `.ics` file with a repeating event and an
+     alert, so the phone's calendar reminds the owner even when the app is closed.
+- iPhone: notifications only work after the app is added to the Home Screen (iOS 16.4+).
 
 ## Look and feel (from the Habit Tracker app)
 
@@ -70,4 +83,4 @@ the Habit Tracker app, a new All habits screen, and Weekly / Monthly / Yearly st
 
 - Turn on GitHub Pages (needs the repo to be public on a free GitHub plan).
 - Pick the next feature from "Ideas for later" in `README.md`. Features the Habit Tracker app
-  has that we don't yet: reminders, a mood and memo for each day, habit groups, widgets.
+  has that we don't yet: habit groups, widgets.

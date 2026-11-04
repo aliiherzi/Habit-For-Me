@@ -28,6 +28,14 @@ const SUGGESTIONS = [
   { name: 'Sleep by 11pm', icon: '😴', color: '#1faf7a', goal: 1 },
 ];
 const RANGES = [['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']];
+const MOODS = [
+  { emoji: '😞', label: 'Awful' },
+  { emoji: '🙁', label: 'Bad' },
+  { emoji: '😐', label: 'Okay' },
+  { emoji: '🙂', label: 'Good' },
+  { emoji: '😄', label: 'Great' },
+];
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/; // "HH:MM", e.g. "08:30"
 
 const ICON_SVG = {
   tick: '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -53,6 +61,10 @@ const addDays = (d, n) => {
 const todayKey = () => keyOf(new Date());
 const isKey = (k) => typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k);
 const fmt = (d, opts) => d.toLocaleDateString(undefined, opts);
+const fmtTime = (hm) => {
+  const [h, m] = hm.split(':').map(Number);
+  return new Date(2023, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+};
 
 function startOfWeek(d) {
   const diff = (d.getDay() - state.settings.weekStart + 7) % 7;
@@ -72,7 +84,7 @@ function dayName(dow, style = 'short') {
 /* ---------- 3. Saving and loading ---------- */
 
 function defaultState() {
-  return { version: 1, habits: [], log: {}, settings: { theme: 'system', weekStart: 1 } };
+  return { version: 2, habits: [], log: {}, journal: {}, settings: { theme: 'system', weekStart: 1 } };
 }
 
 function clampInt(v, min, max, fallback) {
@@ -100,6 +112,7 @@ function normalize(raw) {
           goal: clampInt(h.goal, 1, 50, 1),
           days: days.length ? days : ALL_DAYS.slice(),
           createdAt: isKey(h.createdAt) ? h.createdAt : todayKey(),
+          reminder: TIME_RE.test(h.reminder) ? h.reminder : '', // "" means no reminder
         };
       });
   }
@@ -114,6 +127,18 @@ function normalize(raw) {
         if (isKey(k) && n > 0) clean[k] = n;
       }
       s.log[h.id] = clean;
+    }
+  }
+
+  // Mood (1-5) and note for each day: { "YYYY-MM-DD": { mood, note } }
+  if (raw.journal && typeof raw.journal === 'object') {
+    for (const [k, v] of Object.entries(raw.journal)) {
+      if (!isKey(k) || !v || typeof v !== 'object') continue;
+      const entry = {};
+      const mood = clampInt(v.mood, 0, 5, 0);
+      if (mood) entry.mood = mood;
+      if (typeof v.note === 'string' && v.note.trim()) entry.note = v.note.slice(0, 1000);
+      if (Object.keys(entry).length) s.journal[k] = entry;
     }
   }
 
@@ -160,6 +185,17 @@ const ui = {
 const countOf = (h, k) => (state.log[h.id] && state.log[h.id][k]) || 0;
 const isDone = (h, k) => countOf(h, k) >= h.goal;
 const findHabit = (id) => state.habits.find((h) => h.id === id) || null;
+const entryOf = (k) => state.journal[k] || {};
+
+/** Saves the mood and/or note for a day. Empty values are removed. */
+function setJournal(k, patch) {
+  const next = { ...entryOf(k), ...patch };
+  if (!next.mood) delete next.mood;
+  if (!next.note) delete next.note;
+  if (Object.keys(next).length) state.journal[k] = next;
+  else delete state.journal[k];
+  save();
+}
 
 /** First day a habit counts from: the day it was made, or an earlier logged day. */
 function startKey(h) {
@@ -305,6 +341,7 @@ function render() {
     if (active.dataset.id) focusSel += `[data-id="${CSS.escape(active.dataset.id)}"]`;
     if (active.dataset.key) focusSel += `[data-key="${active.dataset.key}"]`;
     if (active.dataset.range) focusSel += `[data-range="${active.dataset.range}"]`;
+    if (active.dataset.v) focusSel += `[data-v="${active.dataset.v}"]`;
   }
 
   const habit = ui.detail && findHabit(ui.detail);
@@ -379,7 +416,28 @@ function renderToday() {
     ${due.length
       ? `<ul class="bars">${due.map((h) => habitBar(h, ui.date)).join('')}</ul>`
       : '<p class="empty-note">Nothing scheduled for this day. Enjoy the rest! 🌿</p>'}
-    ${resting ? `<p class="muted small center rest-note">${plural(resting, 'habit')} not scheduled ${isToday ? 'today' : 'this day'}.</p>` : ''}`;
+    ${resting ? `<p class="muted small center rest-note">${plural(resting, 'habit')} not scheduled ${isToday ? 'today' : 'this day'}.</p>` : ''}
+    ${journalCard(ui.date)}`;
+}
+
+/** Mood and note for the chosen day. */
+function journalCard(k) {
+  const e = entryOf(k);
+  const moods = MOODS.map((m, i) => {
+    const on = e.mood === i + 1;
+    return `<button class="mood${on ? ' on' : ''}" data-action="mood" data-v="${i + 1}" aria-pressed="${on}" aria-label="${m.label}" title="${m.label}">${m.emoji}</button>`;
+  }).join('');
+  return `
+    <section class="journal" aria-labelledby="j-title">
+      <div class="j-top">
+        <h2 id="j-title">${k === todayKey() ? 'How was your day?' : 'How was this day?'}</h2>
+        ${e.mood ? `<span class="j-mood">${MOODS[e.mood - 1].label}</span>` : ''}
+      </div>
+      <div class="moods" role="group" aria-label="Mood">${moods}</div>
+      <button class="j-note" data-action="note">
+        ${e.note ? `<span class="j-text">${esc(e.note)}</span>` : '<span class="muted">📝 Add a note about your day…</span>'}
+      </button>
+    </section>`;
 }
 
 /** A scrolling row of days: the last five weeks up to the end of this week. */
@@ -418,6 +476,7 @@ function habitBar(h, k) {
   const parts = [];
   if (h.goal > 1) parts.push(`${Math.min(c, h.goal)}/${h.goal} times`);
   parts.push(streak ? `🔥 ${plural(streak, 'day')}` : scheduleText(h));
+  if (h.reminder && !done) parts.push(`⏰ ${fmtTime(h.reminder)}`);
   const label = done
     ? `${h.name}: done. Tap to undo.`
     : h.goal > 1 ? `${h.name}: ${c} of ${h.goal}. Tap to add one.` : `${h.name}: not done. Tap to mark done.`;
@@ -448,7 +507,7 @@ function renderHabits() {
           <span class="h-icon" aria-hidden="true">${esc(h.icon)}</span>
           <span class="lr-body">
             <span class="lr-name">${esc(h.name)}</span>
-            <span class="lr-meta">${esc(scheduleText(h))}${h.goal > 1 ? ` · ${h.goal} times a day` : ''}</span>
+            <span class="lr-meta">${esc(scheduleText(h))}${h.goal > 1 ? ` · ${h.goal} times a day` : ''}${h.reminder ? ` · ⏰ ${esc(fmtTime(h.reminder))}` : ''}</span>
           </span>
           ${s ? `<span class="lr-streak" aria-label="${esc(`${plural(s, 'day')} in a row`)}">🔥 ${s}</span>` : ''}
           <span class="lr-chev" aria-hidden="true">${ICON_SVG.right}</span>
@@ -517,6 +576,20 @@ function renderDetail(h) {
         <div class="tile k3"><div class="value">${r.pct === null ? '–' : pct(r.pct)}</div><div class="label">Last 30 days</div><div class="sub">${r.done} of ${r.due} scheduled days</div></div>
         <div class="tile k4"><div class="value">${total}</div><div class="label">Total done</div></div>
       </div>
+
+      <section class="card rem-card">
+        <div class="rem-row">
+          <span class="rem-icon" aria-hidden="true">⏰</span>
+          <div class="rem-body">
+            <strong>${h.reminder ? `Reminder at ${esc(fmtTime(h.reminder))}` : 'No reminder'}</strong>
+            <span class="muted small">${h.reminder ? esc(scheduleText(h)) : 'Get a nudge at a time you choose.'}</span>
+          </div>
+          <button class="ghost" data-action="edit" data-id="${esc(h.id)}">${h.reminder ? 'Change' : 'Set one'}</button>
+        </div>
+        ${h.reminder ? `
+          <button class="primary rem-cal" data-action="ics" data-id="${esc(h.id)}">📅 Add to calendar</button>
+          <p class="muted small rem-tip">Your calendar app then reminds you, even when Habit For Me is closed.</p>` : ''}
+      </section>
 
       <section class="card" style="${habitVars(h)}">
         <div class="cal-head">
@@ -617,12 +690,19 @@ function weeklyView(start) {
       </div>`;
   }).join('');
 
+  const moodOf = (d) => entryOf(keyOf(d)).mood;
+  const moodCells = days.map((d) => `<span class="mood-cell">${moodOf(d) ? MOODS[moodOf(d) - 1].emoji : ''}</span>`).join('');
+  const moodWords = days.map((d) => `${fmt(d, { weekday: 'long' })} ${moodOf(d) ? MOODS[moodOf(d) - 1].label : 'not set'}`).join(', ');
   const sum = weekSummary(days);
   const top = Math.max(0, ...state.habits.map((h) => currentStreak(h)));
   return `
     <div class="wk">
       <div class="wk-row wk-headrow" aria-hidden="true"><div class="wk-name"></div><div class="wk-grid wk-head">${head}<span></span></div></div>
       ${rows}
+      <div class="wk-row wk-moodrow">
+        <div class="wk-name">Mood</div>
+        <div class="wk-grid" role="img" aria-label="${esc(`Mood: ${moodWords}`)}">${moodCells}<span></span></div>
+      </div>
     </div>
     <div class="kpis">
       <div class="kpi k1"><b>${sum.met === null ? '–' : pct(sum.met)}</b><span>Met</span></div>
@@ -710,11 +790,13 @@ function renderMe() {
     const d = addDays(start, i);
     const k = keyOf(d);
     const p = k > tk ? null : dayProgress(d);
-    spoken.push(`${fmt(d, { weekday: 'long' })} ${p === null ? 'nothing yet' : pct(p)}`);
+    const mood = entryOf(k).mood;
+    spoken.push(`${fmt(d, { weekday: 'long' })} ${p === null ? 'nothing yet' : pct(p)}${mood ? `, feeling ${MOODS[mood - 1].label}` : ''}`);
     return `
       <div class="wd${k === tk ? ' now' : ''}">
         <span>${esc(fmt(d, { weekday: 'narrow' }))}</span>
         <span class="wd-ring" style="--p:${(p || 0).toFixed(3)}"><b>${d.getDate()}</b></span>
+        <span class="wd-mood">${mood ? MOODS[mood - 1].emoji : ''}</span>
       </div>`;
   }).join('');
 
@@ -742,6 +824,12 @@ function renderMe() {
             ${seg('week-start', 1, 'Mon', ws === 1)}${seg('week-start', 0, 'Sun', ws === 0)}
           </div>
         </div>
+        <div class="row"><span>Reminder notifications</span>${notifControl()}</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Recent notes</div>
+        ${recentNotes()}
       </section>
 
       <section class="panel">
@@ -765,7 +853,30 @@ function renderMe() {
       </section>
     </div>
 
-    <p class="muted small center about">Habit For Me · version 2.0</p>`;
+    <p class="muted small center about">Habit For Me · version 2.1</p>`;
+}
+
+function notifControl() {
+  if (typeof Notification === 'undefined') return '<span class="muted">Not available here</span>';
+  if (Notification.permission === 'granted') return '<span class="muted">On</span>';
+  if (Notification.permission === 'denied') return '<span class="muted">Blocked</span>';
+  return '<button class="ghost" data-action="notif">Turn on</button>';
+}
+
+function recentNotes() {
+  const keys = Object.keys(state.journal).filter((k) => state.journal[k].note).sort().reverse().slice(0, 5);
+  if (!keys.length) return '<p class="help">No notes yet. Add one under “How was your day?” on the Today screen.</p>';
+  return keys.map((k) => {
+    const e = state.journal[k];
+    return `
+      <button class="row note-row" data-action="goto-day" data-key="${k}">
+        <span class="nr-mood" aria-hidden="true">${e.mood ? MOODS[e.mood - 1].emoji : '📝'}</span>
+        <span class="nr-body">
+          <span class="nr-date">${esc(fmt(parseKey(k), { weekday: 'short', month: 'short', day: 'numeric' }))}</span>
+          <span class="nr-text">${esc(e.note)}</span>
+        </span>
+      </button>`;
+  }).join('');
 }
 
 /* ---------- 6. Add / edit sheet ---------- */
@@ -780,6 +891,7 @@ function openSheet(h, preset) {
     color: preset ? preset.color : COLORS[0],
     goal: preset ? preset.goal : 1,
     days: ALL_DAYS,
+    reminder: '',
   };
   const icons = ICONS.includes(v.icon) ? ICONS : [v.icon, ...ICONS];
   const colors = COLORS.includes(v.color) ? COLORS : [v.color, ...COLORS];
@@ -835,6 +947,17 @@ function openSheet(h, preset) {
           </div>
         </fieldset>
 
+        <div class="fgroup">
+          <div class="frow">
+            <span class="flabel" id="rem-label">Reminder</span>
+            <label class="switch"><input type="checkbox" name="remind" ${v.reminder ? 'checked' : ''} aria-labelledby="rem-label"><span aria-hidden="true"></span></label>
+          </div>
+          <div class="rem-time"${v.reminder ? '' : ' hidden'}>
+            <label class="frow"><span>Time</span><input type="time" name="reminder" value="${v.reminder || '08:00'}"></label>
+            <p class="hint">You get a notification while Habit For Me is open. For reminders when it's closed, use <strong>Add to calendar</strong> on the habit's page.</p>
+          </div>
+        </div>
+
         <p class="form-error" role="alert" hidden></p>
         <button type="submit" class="primary">${h ? 'Save changes' : 'Add habit'}</button>
       </form>
@@ -850,12 +973,20 @@ sheet.addEventListener('change', (e) => {
   if (!form) return;
   if (e.target.name === 'icon') form.querySelector('.preview').textContent = e.target.value;
   if (e.target.name === 'color') form.querySelector('.name-row').style.setProperty('--c', e.target.value);
+  if (e.target.name === 'remind') form.querySelector('.rem-time').hidden = !e.target.checked;
 });
 
 sheet.addEventListener('submit', (e) => {
   e.preventDefault();
   const form = e.target;
   const fd = new FormData(form);
+  if (form.id === 'note-form') {
+    setJournal(form.dataset.key, { note: String(fd.get('note') || '').trim().slice(0, 1000) });
+    sheet.close();
+    render();
+    toast('Note saved');
+    return;
+  }
   const name = String(fd.get('name') || '').trim();
   const days = fd.getAll('days').map(Number).sort();
   const error = form.querySelector('.form-error');
@@ -874,6 +1005,7 @@ sheet.addEventListener('submit', (e) => {
     color: String(fd.get('color') || COLORS[0]),
     goal: clampInt(fd.get('goal'), 1, 50, 1),
     days,
+    reminder: fd.get('remind') && TIME_RE.test(String(fd.get('reminder'))) ? String(fd.get('reminder')) : '',
   };
   const existing = ui.editing && findHabit(ui.editing);
   if (existing) Object.assign(existing, data);
@@ -883,12 +1015,36 @@ sheet.addEventListener('submit', (e) => {
   sheet.close();
   render();
   toast(existing ? 'Habit updated' : `${data.icon} ${data.name} added`);
+  if (data.reminder) askNotifications();
 });
 
 // Tapping the dark area outside the sheet closes it.
 sheet.addEventListener('click', (e) => {
   if (e.target === sheet) sheet.close();
 });
+
+/** The sheet for writing a note about one day. */
+function openNote(k) {
+  const e = entryOf(k);
+  sheet.innerHTML = `
+    <div class="sheet-inner">
+      <div class="grabber" aria-hidden="true"></div>
+      <form id="note-form" data-key="${k}" novalidate>
+        <div class="sheet-head">
+          <button type="button" class="x-btn" data-action="close-sheet" aria-label="Close">${ICON_SVG.close}</button>
+          <h2 id="sheet-title">${esc(fmt(parseKey(k), { weekday: 'long', month: 'short', day: 'numeric' }))}</h2>
+          <span aria-hidden="true"></span>
+        </div>
+        <label class="fgroup"><span class="flabel">Note</span>
+          <textarea name="note" maxlength="1000" rows="6" placeholder="How did it go? What helped, and what got in the way?">${esc(e.note || '')}</textarea>
+        </label>
+        <button type="submit" class="primary">Save note</button>
+        ${e.note ? '<button type="button" class="text-danger" data-action="clear-note">Delete note</button>' : ''}
+      </form>
+    </div>`;
+  sheet.showModal();
+  sheet.querySelector('textarea').focus();
+}
 
 function newId() {
   return window.crypto && crypto.randomUUID
@@ -913,17 +1069,71 @@ function tick(h) {
   }
 }
 
-function exportData() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+function downloadFile(content, type, filename) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = `habit-for-me-backup-${todayKey()}.json`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportData() {
+  downloadFile(JSON.stringify(state, null, 2), 'application/json', `habit-for-me-backup-${todayKey()}.json`);
   toast('Backup downloaded');
+}
+
+/** A calendar file (.ics) with a repeating event and alert, so the calendar app can remind you. */
+function downloadCalendar(h) {
+  const codes = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+  let first = new Date();
+  while (!h.days.includes(first.getDay())) first = addDays(first, 1);
+  const [hh, mm] = h.reminder.split(':');
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const text = (v) => String(v).replace(/[\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
+  const fold = (line) => {
+    // Calendar files wrap lines longer than 75 bytes.
+    const parts = [];
+    let cur = '';
+    let bytes = 0;
+    for (const ch of line) {
+      const n = new TextEncoder().encode(ch).length;
+      if (bytes + n > 74) {
+        parts.push(cur);
+        cur = ' ';
+        bytes = 1;
+      }
+      cur += ch;
+      bytes += n;
+    }
+    parts.push(cur);
+    return parts.join('\r\n');
+  };
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Habit For Me//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${h.id}@habit-for-me`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART:${keyOf(first).replace(/-/g, '')}T${hh}${mm}00`,
+    'DURATION:PT15M',
+    `RRULE:${h.days.length === 7 ? 'FREQ=DAILY' : `FREQ=WEEKLY;BYDAY=${h.days.map((d) => codes[d]).join(',')}`}`,
+    `SUMMARY:${text(`${h.icon} ${h.name}`)}`,
+    'DESCRIPTION:A reminder from Habit For Me',
+    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${text(h.name)}`, 'TRIGGER:PT0M', 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR',
+  ];
+  const slug = h.name.replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'habit';
+  downloadFile(`${lines.map(fold).join('\r\n')}\r\n`, 'text/calendar', `${slug}-reminder.ics`);
+  toast('Calendar file downloaded. Open it to add the reminder.');
+}
+
+/** Asks the browser for permission to show notifications (only after a tap). */
+function askNotifications() {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+  const result = Notification.requestPermission();
+  if (result && result.then) result.then(() => render());
 }
 
 document.getElementById('import-file').addEventListener('change', async (e) => {
@@ -1038,6 +1248,33 @@ document.addEventListener('click', (e) => {
       render();
       break;
     }
+    case 'mood': {
+      const v = Number(el.dataset.v);
+      setJournal(ui.date, { mood: entryOf(ui.date).mood === v ? 0 : v });
+      render();
+      break;
+    }
+    case 'note':
+      openNote(ui.date);
+      break;
+    case 'clear-note':
+      setJournal(el.closest('form').dataset.key, { note: '' });
+      sheet.close();
+      render();
+      toast('Note deleted');
+      break;
+    case 'goto-day':
+      ui.date = el.dataset.key;
+      ui.tab = 'today';
+      render();
+      window.scrollTo(0, 0);
+      break;
+    case 'ics':
+      if (h && h.reminder) downloadCalendar(h);
+      break;
+    case 'notif':
+      askNotifications();
+      break;
     case 'theme':
       state.settings.theme = el.dataset.value;
       save();
@@ -1116,10 +1353,69 @@ function checkDayChange() {
   lastToday = t;
   render();
 }
+/* Reminders: a notification at the chosen time while the app is open. */
+
+const REMINDED_KEY = 'habit-for-me:reminded'; // which reminders were already sent today
+
+function checkReminders() {
+  const now = new Date();
+  const tk = keyOf(now);
+  const mins = now.getHours() * 60 + now.getMinutes();
+  let sent = null;
+  try {
+    sent = JSON.parse(localStorage.getItem(REMINDED_KEY) || 'null');
+  } catch (err) {
+    sent = null;
+  }
+  if (!sent || sent.day !== tk || !Array.isArray(sent.ids)) sent = { day: tk, ids: [] };
+  let changed = false;
+  for (const h of state.habits) {
+    if (!h.reminder || sent.ids.includes(h.id)) continue;
+    const [hh, mm] = h.reminder.split(':').map(Number);
+    const late = mins - (hh * 60 + mm);
+    if (late < 0 || late > 60) continue; // only in the hour after the reminder time
+    sent.ids.push(h.id);
+    changed = true;
+    if (isDue(h, now) && !isDone(h, tk)) remind(h);
+  }
+  if (changed) {
+    try {
+      localStorage.setItem(REMINDED_KEY, JSON.stringify(sent));
+    } catch (err) {
+      // Storage blocked: the reminder may repeat, which is harmless.
+    }
+  }
+}
+
+function remind(h) {
+  const title = `${h.icon} ${h.name}`;
+  const options = { body: 'Time for this habit. Tap to open Habit For Me.', icon: 'icons/icon-192.png', tag: `habit-${h.id}` };
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    const fallback = () => {
+      try {
+        new Notification(title, options); // eslint-disable-line no-new
+      } catch (err) {
+        // This browser only allows notifications from the service worker.
+      }
+    };
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistration()
+        .then((reg) => (reg ? reg.showNotification(title, options) : fallback()))
+        .catch(fallback);
+    } else fallback();
+  }
+  if (!document.hidden) toast(`⏰ Time for ${h.name}`);
+}
+
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) checkDayChange();
+  if (document.hidden) return;
+  checkDayChange();
+  checkReminders();
 });
-setInterval(checkDayChange, 60 * 1000);
+setInterval(() => {
+  checkDayChange();
+  checkReminders();
+}, 30 * 1000);
 
 // Lets the app work offline once it has been opened.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
@@ -1130,3 +1426,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 
 applyTheme();
 render();
+checkReminders();

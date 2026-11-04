@@ -13,6 +13,9 @@ Check off your habits every day, build streaks, and see your progress.
 - [x] Streaks: current streak and best streak for every habit
 - [x] All habits list, and a details page with a calendar for each habit (tap a day to mark it done or not done)
 - [x] Stats: Weekly, Monthly and Yearly reports, with "perfect" badges and totals
+- [x] Mood and a note for each day (shown in Weekly stats, and recent notes on the Me page)
+- [x] Reminders: pick a time for a habit and get a notification while the app is open, or use
+  **Add to calendar** so your calendar app reminds you even when the app is closed
 - [x] Me page: this week at a glance, settings, and backups
 - [x] Fits every screen: phones, tablets and iPads, and laptops
 - [x] Light and dark mode
@@ -27,9 +30,8 @@ Habit For Me keeps its own name, icon and artwork.
 
 ## Ideas for later
 
-- Reminders / notifications
-- A mood and a short note for each day
 - Habit groups (e.g. Morning, Evening)
+- Notifications even when the app is closed (needs a push server)
 - Reorder habits by dragging
 - Archive a habit instead of deleting it
 - Sync between devices (needs accounts and a server)

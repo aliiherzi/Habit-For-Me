@@ -1,7 +1,7 @@
 // Service worker: lets Habit For Me open without internet.
 // It tries the network first (so updates show up), and falls back to the saved copy when offline.
 // Change CACHE when you add new files so old copies are cleaned up.
-const CACHE = 'habit-for-me-v2';
+const CACHE = 'habit-for-me-v3';
 const FILES = [
   './',
   './index.html',
@@ -43,5 +43,16 @@ self.addEventListener('fetch', (event) => {
       .catch(() =>
         caches.match(request).then((cached) => cached || (request.mode === 'navigate' ? caches.match('./index.html') : undefined))
       )
+  );
+});
+
+// Tapping a reminder notification opens the app (or brings it to the front).
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) if ('focus' in client) return client.focus();
+      return self.clients.openWindow('./');
+    })
   );
 });
