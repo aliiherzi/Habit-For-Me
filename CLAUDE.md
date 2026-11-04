@@ -21,7 +21,10 @@ Still there from v2: reminders, and a mood and note for each day.
 2. **Tech:** plain HTML, CSS and JavaScript. No framework, no build step, no dependencies.
 3. **Data:** saved on the device in `localStorage`. Backups are JSON files (Settings →
    Download a backup / Restore). No accounts or server.
-4. **Hosting:** GitHub Pages from the `main` branch root.
+4. **Hosting:** GitHub Pages, live at https://aliiherzi.github.io/Habit-For-Me/ . It publishes the
+   `gh-pages` branch, a copy of `main`: after pushing `main`, also run `git push origin main:gh-pages`.
+   The repo is public (code only; habits stay on each device). This cloud session can't change repo
+   settings (visibility, Pages), but pushing `gh-pages` is enough to publish.
 5. **Look:** the owner wants Habit For Me to look like the **Habit Tracker** app by Davetech
    (App Store), which they use on their Mac. Follow its layout, colours, screens and menu.
    Keep our own name, icon and artwork: no copied images, logos or premium/paywall screens.
@@ -95,6 +98,6 @@ Still there from v2: reminders, and a mood and note for each day.
 
 ## Next steps
 
-- Turn on GitHub Pages (needs the repo to be public on a free GitHub plan).
+- Done: the owner's email was removed from the history, the repo is public, and the app is live.
 - Pick the next feature from "Ideas for later" in `README.md`. Features the Habit Tracker app
   has that we don't yet: quit habits, widgets, friends, Apple Health sync (not possible in a web app).

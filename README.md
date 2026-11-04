@@ -43,14 +43,16 @@ Habit For Me keeps its own name, icon and artwork.
 
 ## Use it
 
-### Put it online for free (GitHub Pages)
+### Open it
 
-1. On GitHub, open this repo, then **Settings → Pages**.
-2. Under **Build and deployment**, pick **Deploy from a branch**, choose **main** and **/ (root)**, then **Save**.
-3. After a minute or two the app is live at **https://aliiherzi.github.io/Habit-For-Me/**
+The app is live at **https://aliiherzi.github.io/Habit-For-Me/** (free GitHub Pages).
+It is published from the `gh-pages` branch, a copy of `main`. After changing `main`, publish with:
 
-> On a free GitHub account, Pages only works for **public** repos. Making the repo
-> public shows the code only. Your habit data never leaves your device.
+```bash
+git push origin main:gh-pages
+```
+
+The code is public; your habit data never leaves your device.
 
 ### Install it like an app
 
