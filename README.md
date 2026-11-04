@@ -21,8 +21,9 @@ Check off your habits every day, build streaks, and see your progress.
   **Add reminder to calendar** so your calendar app reminds you even when the app is closed
 - [x] Archive a habit instead of deleting it
 - [x] Me page: your name and picture, moods, a daily quote, settings and backups
-- [x] Unit picker like the Habit Tracker app: Activity, Body Measurements, Nutrition Intake, Mind,
-  Workout, Faith and Other, each item with its measurements, plus search or your own unit
+- [x] Unit picker like the Habit Tracker app, with the habits most people track: Popular, Activity,
+  Body Measurements, Nutrition Intake, Workout, Mind & Sleep, Study & Work, Faith, Self-care,
+  Home & Money, Family & Friends and Other. Each item has its measurements; search, or type your own unit
 - [x] The week starts on Saturday (or Sunday or Monday, in Me → Settings)
 - [x] Fits every screen: phones, tablets and iPads, and laptops
 - [x] Dark look by default, a sun/moon button on Today to switch to light, and Auto in Me → Settings

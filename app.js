@@ -51,29 +51,103 @@ const MOODS = [
   { emoji: '🙂', label: 'Good' },
   { emoji: '😄', label: 'Great' },
 ];
-// The Unit picker: kinds of things to count, each with its own measurements (first one is the default).
+// The Unit picker: kinds of things to count, each with items and their measurements.
+// An item is [name, 'units', 'more search words']; the first unit is the usual one.
+// A plain string starts a new section. Item names must all be different.
 const SPORTS = ['American Football', 'Archery', 'Badminton', 'Baseball', 'Basketball', 'Bowling', 'Boxing',
   'Cardio Dance', 'Climbing', 'Cooldown', 'Cricket', 'Cycling', 'Dance', 'Football (soccer)', 'Golf',
   'Gym / Strength', 'HIIT', 'Hiking', 'Martial Arts', 'Pilates', 'Rowing', 'Running', 'Skating', 'Skiing',
   'Swimming', 'Table Tennis', 'Tennis', 'Volleyball', 'Walking', 'Yoga'];
 const DISTANCE_SPORTS = ['Cycling', 'Hiking', 'Rowing', 'Running', 'Skiing', 'Walking'];
 const UNIT_KINDS = [
-  ['Activity', [['Active Energy', ['kcal', 'kJ']], ['Basal Energy', ['kcal', 'kJ']], ['Cycling Distance', ['km', 'mi', 'm']],
-    ['Flights Climbed', ['floors']], ['Move Time', ['min']], ['Stand Hours', ['hr']], ['Stand Minutes', ['min']],
-    ['Steps', ['steps']], ['Swimming Distance', ['m', 'yd']], ['Walking + Running Distance', ['km', 'mi', 'm']]]],
-  ['Body Measurements', [['Body Weight', ['kg', 'lb']], ['Body Fat', ['%']], ['Waist', ['cm', 'in']], ['Height', ['cm', 'in']]]],
-  ['Nutrition Intake', [['Water', ['glasses', 'ml', 'l', 'cups']], ['Biotin', ['mcg']], ['Caffeine', ['mg']], ['Calcium', ['mg']],
-    ['Carbohydrates', ['g']], ['Dietary Energy', ['kcal', 'kJ']], ['Dietary Sugar', ['g']], ['Fiber', ['g']], ['Folate', ['mcg']],
-    ['Fruit and vegetables', ['servings']], ['Iron', ['mg']], ['Magnesium', ['mg']], ['Potassium', ['mg']], ['Protein', ['g']],
-    ['Sodium', ['mg']], ['Vitamin C', ['mg']], ['Vitamin D', ['mcg']], ['Zinc', ['mg']]]],
-  ['Mind', [['Mindful Minutes', ['min']], ['Sleep', ['hr', 'min']], ['Reading', ['pages', 'min', 'chapters']],
-    ['Study', ['min', 'hr', 'lessons']], ['Journaling', ['min', 'pages']], ['Screen-free time', ['min', 'hr']]]],
-  ['Workout', SPORTS.map((s) => [s, s === 'Swimming' ? ['min', 'hr', 'kcal', 'm'] : DISTANCE_SPORTS.includes(s) ? ['min', 'hr', 'kcal', 'km'] : ['min', 'hr', 'kcal']])],
-  ['Faith', [['Quran', ['pages', 'ayahs', 'juz', 'min']], ['Prayers', ['prayers']], ['Sunnah prayers', ['rakats']],
-    ['Dhikr', ['times']], ['Istighfar', ['times']], ['Salawat', ['times']], ['Sadaqah', ['times']], ['Fasting', ['days']]]],
-  ['Other', [['Count', ['count']], ['Times', ['times']], ['Blood Glucose', ['mg/dL', 'mmol/L']], ['Handwashing', ['min']],
-    ['Time in Daylight', ['min']], ['Toothbrushing', ['min']]]],
+  ['Activity', [
+    ['Active Energy', 'kcal kJ', 'calories burned'], ['Basal Energy', 'kcal kJ', 'resting calories'],
+    ['Cycling Distance', 'km mi m', 'bike'], ['Exercise Minutes', 'min', 'workout'], ['Flights Climbed', 'floors', 'stairs'],
+    ['Move Time', 'min'], ['Stand Hours', 'hr'], ['Stand Minutes', 'min'], ['Steps', 'steps', 'walk'],
+    ['Swimming Distance', 'm yd km', 'swim'], ['Walking + Running Distance', 'km mi m', 'walk run jog']]],
+  ['Body Measurements', [
+    ['Body Fat Percentage', '%'], ['Body Mass Index', 'BMI'], ['Height', 'cm in'], ['Lean Body Mass', 'kg lb'],
+    ['Waist Circumference', 'cm in', 'waist'], ['Weight', 'kg lb', 'body weight'],
+    'Health checks',
+    ['Blood Glucose', 'mg/dL mmol/L', 'sugar diabetes'], ['Blood Oxygen', '%', 'spo2'], ['Blood Pressure', 'mmHg'],
+    ['Body Temperature', '°C °F', 'fever'], ['Heart Rate', 'bpm', 'pulse'], ['Resting Heart Rate', 'bpm', 'pulse']]],
+  ['Nutrition Intake', [
+    'Food and drink',
+    ['Water', 'glasses ml l cups oz', 'drink'], ['Coffee', 'cups'], ['Tea', 'cups'], ['Milk', 'glasses cups ml'],
+    ['Fruit', 'pieces servings'], ['Vegetables', 'servings', 'veggies'], ['Fruit and vegetables', 'servings'],
+    ['Healthy meals', 'meals', 'eat food'], ['Home-cooked meals', 'meals', 'cook eat food'],
+    'Nutrients',
+    ['Biotin', 'mcg'], ['Caffeine', 'mg'], ['Calcium', 'mg'], ['Carbohydrates', 'g', 'carbs'], ['Dietary Cholesterol', 'mg'],
+    ['Dietary Energy', 'kcal kJ', 'calories food'], ['Dietary Sugar', 'g', 'sugar'], ['Fiber', 'g', 'fibre'], ['Folate', 'mcg'],
+    ['Iron', 'mg'], ['Magnesium', 'mg'], ['Potassium', 'mg'], ['Protein', 'g'], ['Saturated Fat', 'g'],
+    ['Sodium', 'mg', 'salt'], ['Total Fat', 'g', 'fat'], ['Vitamin A', 'mcg'], ['Vitamin B12', 'mcg'], ['Vitamin C', 'mg'],
+    ['Vitamin D', 'mcg IU'], ['Zinc', 'mg']]],
+  ['Workout', [
+    'Exercises',
+    ['Push-ups', 'reps sets', 'pushups press'], ['Pull-ups', 'reps sets', 'pullups'], ['Sit-ups', 'reps sets', 'situps abs'],
+    ['Squats', 'reps sets', 'legs'], ['Lunges', 'reps sets', 'legs'], ['Burpees', 'reps sets'], ['Jumping Jacks', 'reps'],
+    ['Plank', 'sec min', 'core abs'], ['Jump Rope', 'min skips', 'skipping'], ['Stretching', 'min', 'flexibility'],
+    'Sports',
+    ...SPORTS.map((s) => [s, `min hr sessions kcal${s === 'Swimming' ? ' m' : DISTANCE_SPORTS.includes(s) ? ' km' : ''}`,
+      s === 'Gym / Strength' ? 'workout weights' : ''])]],
+  ['Mind & Sleep', [
+    ['Mindful Minutes', 'min', 'mindfulness'], ['Meditation', 'min sessions'], ['Breathing', 'min breaths', 'breath'],
+    ['Journaling', 'min pages entries', 'diary write'], ['Gratitude', 'things', 'thankful'],
+    ['Screen-free time', 'min hr', 'phone digital detox'], ['Time in Daylight', 'min', 'outside sun outdoors'],
+    'Sleep',
+    ['Sleep', 'hr min'], ['Time in Bed', 'hr min'], ['Nap', 'min']]],
+  ['Study & Work', [
+    'Study',
+    ['Reading', 'pages min chapters books', 'book read'], ['Study', 'min hr lessons sessions', 'learn school'],
+    ['Homework', 'tasks min', 'school'], ['Language practice', 'min lessons words', 'english arabic learn'],
+    ['Online course', 'lessons min videos', 'class learn'], ['Podcast', 'episodes min', 'listen'],
+    'Work',
+    ['Deep work', 'hr min sessions', 'focus'], ['Focus sessions', 'sessions min', 'pomodoro'],
+    ['Tasks done', 'tasks', 'to-do todo'], ['Writing', 'words pages min', 'write'], ['Coding', 'min hr problems', 'programming'],
+    'Hobbies',
+    ['Drawing', 'min drawings', 'art'], ['Music practice', 'min songs', 'instrument']]],
+  ['Faith', [
+    'Prayer',
+    ['Prayers', 'prayers', 'salah salat namaz'], ['Prayers on time', 'prayers', 'salah salat'],
+    ['Prayers at the mosque', 'prayers', 'masjid jamaah'], ['Sunnah prayers', 'rakats', 'rawatib'],
+    ['Tahajjud', 'rakats', 'night prayer qiyam'], ['Duha', 'rakats'], ['Witr', 'rakats'],
+    'Quran',
+    ['Quran', 'pages ayahs juz surahs min', 'koran read'], ['Quran memorization', 'ayahs pages surahs', 'hifz'],
+    ['Quran listening', 'min', 'recitation'], ['Tafsir', 'pages min', 'meaning'],
+    'Remembrance',
+    ['Morning adhkar', 'times', 'azkar dhikr'], ['Evening adhkar', 'times', 'azkar dhikr'], ['Dhikr', 'times', 'tasbih zikr'],
+    ['Istighfar', 'times', 'astaghfirullah'], ['Salawat', 'times', 'durood'], ['Dua', 'times', 'supplication'],
+    'Good deeds',
+    ['Sadaqah', 'times $', 'charity'], ['Fasting', 'days', 'sawm'], ['Islamic lesson', 'min lessons', 'learn']]],
+  ['Self-care', [
+    ['Toothbrushing', 'times min', 'teeth brush'], ['Flossing', 'times', 'teeth'], ['Handwashing', 'times min'],
+    ['Shower', 'times min'], ['Skincare', 'times', 'face skin'], ['Sunscreen', 'times'],
+    ['Medicine', 'doses pills', 'medication tablets'], ['Vitamins', 'pills', 'supplements']]],
+  ['Home & Money', [
+    'Home',
+    ['Cleaning', 'min', 'clean house'], ['Tidy up', 'min items', 'declutter'], ['Laundry', 'loads'],
+    ['Dishes', 'times'], ['Cooking', 'meals min', 'cook'], ['Make the bed', 'times'],
+    ['Water the plants', 'times', 'garden'], ['Gardening', 'min'],
+    'Money',
+    ['Save money', '$ € £', 'saving'], ['No-spend day', 'days', 'budget'], ['Track spending', 'times', 'expenses budget']]],
+  ['Family & Friends', [
+    ['Call family', 'calls min', 'phone parents mother father'], ['Visit relatives', 'visits', 'family'],
+    ['Time with family', 'min hr'], ['Time with kids', 'min hr', 'children play'], ['Message a friend', 'messages', 'text'],
+    ['Meet friends', 'times hr'], ['Help someone', 'times', 'kindness'], ['Kind deeds', 'deeds', 'good kindness']]],
+  // Plain units for any habit: picking one of these doesn't change the habit's name.
+  ['Other', [
+    ['Count', 'count'], ['Times', 'times'], ['Minutes', 'min'], ['Hours', 'hr'], ['Seconds', 'sec'], ['Sessions', 'sessions'],
+    ['Pages', 'pages'], ['Kilometres', 'km'], ['Miles', 'mi'], ['Metres', 'm'], ['Reps', 'reps'], ['Percent', '%'],
+    ['Money', '$ € £']]],
 ];
+// Every item once, with its kind.
+const UNIT_ITEMS = UNIT_KINDS.flatMap(([kind, list]) => list.filter(Array.isArray).map(([name, units, words = '']) =>
+  ({ kind, name, units: units.split(' '), words, plain: kind === 'Other' })));
+const UNIT_BY_NAME = new Map(UNIT_ITEMS.map((it) => [it.name, it]));
+// The Popular tab comes first: the habits most people track.
+UNIT_KINDS.unshift(['Popular', ['Water', 'Steps', 'Walking', 'Running', 'Gym / Strength', 'Push-ups', 'Sleep', 'Reading',
+  'Study', 'Meditation', 'Journaling', 'Prayers', 'Quran', 'Dhikr', 'Weight', 'Fruit and vegetables', 'Screen-free time',
+  'Call family'].map((name) => [name])]);
 const MEMO_EMOJIS = ['😀', '🙂', '😐', '🙁', '😢', '😂', '🥰', '😎', '😴', '😤', '🤒', '🥳'];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/; // "HH:MM", e.g. "08:30"
 
@@ -1385,45 +1459,65 @@ function openSheet(h, preset) {
 
 /* The Unit picker: opens over the add/edit form, so nothing typed in the form is lost. */
 
-/** The list of items for one kind, or search results across every kind. */
-function unitListHtml(kind, query, current) {
+/** The item and unit chosen in the form: the item named like the habit (or just picked), or else a plain unit. */
+function unitChoice(form) {
+  const unit = form.elements.unit.value || 'count';
+  const name = (form.elements.unit.dataset.item || form.elements.name.value).trim().toLowerCase();
+  const item = UNIT_ITEMS.find((it) => !it.plain && it.name.toLowerCase() === name && it.units.includes(unit))
+    || UNIT_ITEMS.find((it) => it.plain && it.units.includes(unit));
+  return { unit, item };
+}
+
+/** One kind's items (cards with section titles), or search results across every kind. */
+function unitListHtml(kind, query, choice) {
   const q = query.trim().toLowerCase();
-  const all = UNIT_KINDS.flatMap(([k, list]) => list.map(([name, units]) => ({ kind: k, name, units })));
-  const items = q
-    ? all.filter((it) => it.name.toLowerCase().includes(q) || it.kind.toLowerCase().includes(q) || it.units.some((u) => u.toLowerCase() === q))
-    : all.filter((it) => it.kind === UNIT_KINDS[kind][0]);
-  const now = current || 'count';
+  const isOn = (it, u) => it === choice.item && u === choice.unit;
   const row = (it) => {
     const label = `<span class="u-name">${esc(it.name)}${q ? `<small>${esc(it.kind)}</small>` : ''}</span>`;
+    const name = it.plain ? '' : esc(it.name);
     if (it.units.length === 1) {
       const u = it.units[0];
       return `
-        <div class="u-item"><button type="button" class="u-row${u === now ? ' on' : ''}" data-action="unit-pick" data-value="${esc(u)}" data-name="${esc(it.name)}">
+        <div class="u-item"><button type="button" class="u-row${isOn(it, u) ? ' on' : ''}" data-action="unit-pick" data-value="${esc(u)}" data-name="${name}">
           ${label}<span class="u-unit">${esc(u)}</span>
         </button></div>`;
     }
-    const has = it.units.includes(now);
+    const open = it.units.some((u) => isOn(it, u));
     return `
       <div class="u-item">
-        <button type="button" class="u-row" data-action="unit-expand" aria-expanded="${has}">${label}${ICON_SVG.right}</button>
-        <div class="u-choices"${has ? '' : ' hidden'}>
-          ${it.units.map((u) => `<button type="button" class="pchip${u === now ? ' on' : ''}" data-action="unit-pick" data-value="${esc(u)}" data-name="${esc(it.name)}">${esc(u)}</button>`).join('')}
+        <button type="button" class="u-row" data-action="unit-expand" aria-expanded="${open}">${label}${ICON_SVG.right}</button>
+        <div class="u-choices"${open ? '' : ' hidden'}>
+          ${it.units.map((u) => `<button type="button" class="pchip${isOn(it, u) ? ' on' : ''}" data-action="unit-pick" data-value="${esc(u)}" data-name="${name}">${esc(u)}</button>`).join('')}
         </div>
       </div>`;
   };
-  // Offer the typed text as a new unit, unless it is already a unit or the name of an item.
+  const card = (rows) => `<div class="u-card">${rows}</div>`;
+  if (!q) {
+    let html = '';
+    let rows = '';
+    for (const x of UNIT_KINDS[kind][1]) {
+      if (Array.isArray(x)) { rows += row(UNIT_BY_NAME.get(x[0])); continue; }
+      if (rows) html += card(rows);
+      rows = '';
+      html += `<h3 class="u-head">${esc(x)}</h3>`;
+    }
+    return html + (rows ? card(rows) : '');
+  }
+  const found = UNIT_ITEMS.filter((it) => it.name.toLowerCase().includes(q) || it.words.includes(q)
+    || it.kind.toLowerCase().includes(q) || it.units.some((u) => u.toLowerCase() === q));
+  // Offer the typed text as a new unit, unless it is already a unit, or names an item ("Quran", "calories").
   const typed = query.trim().slice(0, 12);
-  const known = all.some((it) => it.units.includes(typed) || it.name.toLowerCase() === q);
-  const own = typed && !known
-    ? `<div class="u-item"><button type="button" class="u-row own" data-action="unit-pick" data-value="${esc(typed)}" data-name="">
-        <span class="u-name">Use your own unit</span><span class="u-unit">${esc(typed)}</span></button></div>`
-    : '';
-  return own || items.length ? `<div class="u-card">${items.map(row).join('')}${own}</div>` : '<p class="u-empty">Nothing found.</p>';
+  const known = UNIT_ITEMS.some((it) => it.units.includes(typed) || it.name.toLowerCase() === q || it.words.split(' ').includes(q));
+  const own = known ? '' : `<div class="u-item"><button type="button" class="u-row own" data-action="unit-pick" data-value="${esc(typed)}" data-name="">
+      <span class="u-name">Use your own unit</span><span class="u-unit">${esc(typed)}</span></button></div>`;
+  return found.length || own ? card(found.map(row).join('') + own) : '<p class="u-empty">Nothing found.</p>';
 }
 
 function openUnitPicker(form) {
-  const current = form.elements.unit.value;
-  const kind = Math.max(0, UNIT_KINDS.findIndex(([, list]) => list.some(([, units]) => units.includes(current || 'count'))));
+  const choice = unitChoice(form);
+  // Open on the kind that holds the chosen item (Popular if it is there). A habit with no unit opens on Popular.
+  const name = choice.item && choice.unit !== 'count' ? choice.item.name : '';
+  const kind = Math.max(0, UNIT_KINDS.findIndex(([, list]) => list.some((x) => Array.isArray(x) && x[0] === name)));
   sheet.insertAdjacentHTML('beforeend', `
     <div class="unit-panel" data-kind="${kind}" role="group" aria-label="Unit">
       <div class="sheet-head">
@@ -1432,13 +1526,18 @@ function openUnitPicker(form) {
         <span class="round-gap" aria-hidden="true"></span>
       </div>
       <div class="unit-tabs" role="group" aria-label="Kinds">
-        ${UNIT_KINDS.map(([name], i) => `<button type="button" class="pchip${i === kind ? ' on' : ''}" data-action="unit-kind" data-value="${i}" aria-pressed="${i === kind}">${esc(name)}</button>`).join('')}
+        ${UNIT_KINDS.map(([k], i) => `<button type="button" class="pchip${i === kind ? ' on' : ''}" data-action="unit-kind" data-value="${i}" aria-pressed="${i === kind}">${esc(k)}</button>`).join('')}
       </div>
-      <div class="unit-list">${unitListHtml(kind, '', current)}</div>
+      <div class="unit-list">${unitListHtml(kind, '', choice)}</div>
       <label class="unit-search">${ICON_SVG.search}<input type="search" placeholder="Search or type a unit" aria-label="Search units, or type your own" autocomplete="off" maxlength="30"></label>
     </div>`);
-  const tab = sheet.querySelector('.unit-tabs .pchip.on');
-  if (tab && tab.scrollIntoView) tab.scrollIntoView({ block: 'nearest', inline: 'center' });
+  // Scroll the chosen kind and item into the middle, without moving anything else.
+  const tabs = sheet.querySelector('.unit-tabs');
+  const tab = tabs.querySelector('.on');
+  tabs.scrollLeft += tab.getBoundingClientRect().left - tabs.getBoundingClientRect().left - (tabs.clientWidth - tab.offsetWidth) / 2;
+  const list = sheet.querySelector('.unit-list');
+  const lit = list.querySelector('.on');
+  if (lit) list.scrollTop += lit.getBoundingClientRect().top - list.getBoundingClientRect().top - (list.clientHeight - lit.offsetHeight) / 2;
 }
 
 /** Mood and note for one day. */
@@ -1560,7 +1659,7 @@ sheet.addEventListener('input', (e) => {
   if (e.target.matches('.unit-search input')) {
     const panel = e.target.closest('.unit-panel');
     const searching = Boolean(e.target.value.trim());
-    panel.querySelector('.unit-list').innerHTML = unitListHtml(Number(panel.dataset.kind), e.target.value, sheet.querySelector('#habit-form').elements.unit.value);
+    panel.querySelector('.unit-list').innerHTML = unitListHtml(Number(panel.dataset.kind), e.target.value, unitChoice(sheet.querySelector('#habit-form')));
     panel.querySelector('.unit-tabs').classList.toggle('dim', searching);
     return;
   }
@@ -2116,7 +2215,7 @@ document.addEventListener('click', (e) => {
         b.setAttribute('aria-pressed', String(on));
       });
       const list = panel.querySelector('.unit-list');
-      list.innerHTML = unitListHtml(Number(value), '', sheet.querySelector('#habit-form').elements.unit.value);
+      list.innerHTML = unitListHtml(Number(value), '', unitChoice(sheet.querySelector('#habit-form')));
       list.scrollTop = 0;
       break;
     }
@@ -2130,10 +2229,11 @@ document.addEventListener('click', (e) => {
       const form = sheet.querySelector('#habit-form');
       const unit = value === 'count' ? '' : value.trim().slice(0, 12);
       form.elements.unit.value = unit;
+      form.elements.unit.dataset.item = el.dataset.name;
       form.querySelector('.unit-val').textContent = unit || 'count';
       // Picking "Steps" or "Water" for a habit with no name yet also gives it that name.
       const itemName = el.dataset.name;
-      if (itemName && !['Count', 'Times'].includes(itemName) && !form.elements.name.value.trim()) form.elements.name.value = itemName;
+      if (itemName && !form.elements.name.value.trim()) form.elements.name.value = itemName;
       updateDaysNote(form);
       el.closest('.unit-panel').remove();
       break;
