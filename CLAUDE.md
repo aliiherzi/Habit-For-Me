@@ -47,10 +47,11 @@ Still there from v2: reminders, and a mood and note for each day.
   `[data-theme="dark"]`. Bigger screens at 640px (tablet) and 900px (iPad landscape, laptop).
 - `sw.js`: network-first offline cache. **Bump `CACHE` and update `FILES`** when adding,
   renaming or removing files.
-- Data shape (version 3): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,
+- Data shape (version 4; v4 only changed the default week start to Saturday): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,
   days: [0-6], time: any|morning|afternoon|evening, group, reminder: "HH:MM" or "", memo, archived,
   createdAt }], log: { habitId: { "YYYY-MM-DD": count } }, memos: { habitId: { "YYYY-MM-DD": { text, emoji } } },
-  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart, name, avatar } }`.
+  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart: 6 Sat | 0 Sun | 1 Mon, name, avatar } }`.
+  The owner's family is Muslim and their week starts on Saturday, so that is the default.
   Keep `normalize()` able to read older data so people's habits are never lost.
 
 ## Reminders (how they work)

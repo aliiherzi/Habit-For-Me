@@ -156,12 +156,12 @@ const dayCode = (dow) => dayName(dow).slice(0, 3).toUpperCase(); // "MON"
 
 function defaultState() {
   return {
-    version: 3,
+    version: 4,
     habits: [],
     log: {},
     memos: {},
     journal: {},
-    settings: { theme: 'dark', weekStart: 1, name: '', avatar: '🙂' },
+    settings: { theme: 'dark', weekStart: 6, name: '', avatar: '🙂' }, // weekStart 6 = Saturday
   };
 }
 
@@ -247,7 +247,9 @@ function normalize(raw) {
 
   const st = raw.settings || {};
   if (['system', 'light', 'dark'].includes(st.theme)) s.settings.theme = st.theme;
-  if (st.weekStart === 0 || st.weekStart === 1) s.settings.weekStart = st.weekStart;
+  if ([0, 1, 6].includes(st.weekStart)) s.settings.weekStart = st.weekStart;
+  // Before version 4, Monday was just the default, so those weeks now start on Saturday.
+  if (!(raw.version >= 4) && st.weekStart === 1) s.settings.weekStart = 6;
   s.settings.name = cleanText(st.name, 30);
   if (typeof st.avatar === 'string' && st.avatar.trim()) s.settings.avatar = st.avatar.trim().slice(0, 8);
   return s;
@@ -1160,7 +1162,7 @@ function renderMe() {
         <section class="card">
           <div class="card-head"><h2>Settings</h2></div>
           <div class="row"><span>Appearance</span>${segButtons('theme', [['dark', 'Dark'], ['light', 'Light'], ['system', 'Auto']], t, 'Appearance')}</div>
-          <div class="row"><span>Week starts on</span>${segButtons('week-start', [['1', 'Mon'], ['0', 'Sun']], String(ws), 'Week starts on')}</div>
+          <div class="row"><span>Week starts on</span>${segButtons('week-start', [['6', 'Sat'], ['0', 'Sun'], ['1', 'Mon']], String(ws), 'Week starts on')}</div>
           <div class="row"><span>Reminder notifications</span>${notifControl()}</div>
           <button class="row" data-action="tab" data-tab="habits"><span>Habit manager</span>${chev}</button>
           <button class="row" data-action="tips"><span>Usage tips</span>${chev}</button>
