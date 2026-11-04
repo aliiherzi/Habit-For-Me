@@ -19,8 +19,11 @@ Still there from v2: reminders, and a mood and note for each day.
 1. **Web and mobile.** Built as a Progressive Web App (PWA): one app that runs in any
    browser and installs on iPhone, Android and Mac home screens/docks.
 2. **Tech:** plain HTML, CSS and JavaScript. No framework, no build step, no dependencies.
-3. **Data:** saved on the device in `localStorage`. Backups are JSON files (Settings →
-   Download a backup / Restore). No accounts or server.
+3. **Data:** saved on the device in `localStorage`. Backups are JSON files (Me →
+   Download a backup / Restore). The owner later asked for sign-in with Google or a phone code:
+   `cloud.js` does this with Firebase (Auth + Firestore) and syncs the whole state between devices.
+   It stays off until `firebase-config.js` is filled in (steps in `docs/sign-in-setup.md`), and the
+   app must keep working fully without signing in.
 4. **Hosting:** GitHub Pages from the `main` branch root.
 5. **Look:** the owner wants Habit For Me to look like the **Habit Tracker** app by Davetech
    (App Store), which they use on their Mac. Follow its layout, colours, screens and menu.
@@ -42,12 +45,20 @@ Still there from v2: reminders, and a mood and note for each day.
   Don't name a global function `top`, `name` or `status`: the browser already uses those names.
 - `styles.css`: colour tokens on `:root` (light), dark tokens under `prefers-color-scheme` and
   `[data-theme="dark"]`. Bigger screens at 640px (tablet) and 900px (iPad landscape, laptop).
+- `cloud.js` (ES module): loads Firebase from gstatic only when `window.FIREBASE_CONFIG` is set.
+  Sign-in by Google pop-up or phone code (invisible reCAPTCHA in `#recaptcha-box`, outside the
+  sheet dialog so a challenge can show). Sync: one Firestore doc `users/{uid}` with the state as JSON;
+  newer `savedAt` wins; first sign-in on a device merges (`mergeStates`). The app side is
+  `window.cloud` and `window.habitApp` in `app.js`; the UI is the Account card on Me.
+- `firebase-config.js`: the Firebase web config. It is not a secret (Google expects it public);
+  security comes from the Firestore rules in `docs/sign-in-setup.md`.
 - `sw.js`: network-first offline cache. **Bump `CACHE` and update `FILES`** when adding,
   renaming or removing files.
 - Data shape (version 3): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,
   days: [0-6], time: any|morning|afternoon|evening, group, reminder: "HH:MM" or "", memo, archived,
   createdAt }], log: { habitId: { "YYYY-MM-DD": count } }, memos: { habitId: { "YYYY-MM-DD": { text, emoji } } },
-  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart, name, avatar } }`.
+  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart, name, avatar },
+  savedAt: ms of the last change (for syncing) }`.
   Keep `normalize()` able to read older data so people's habits are never lost.
 
 ## Reminders (how they work)
@@ -95,6 +106,9 @@ Still there from v2: reminders, and a mood and note for each day.
 
 ## Next steps
 
-- Turn on GitHub Pages (needs the repo to be public on a free GitHub plan).
+- Hide the owner's email in the first commit (history rewrite needs a force push the owner approves),
+  then make the repo public and turn on GitHub Pages.
+- Owner sets up Firebase (`docs/sign-in-setup.md`) and sends the firebaseConfig: put it in
+  `firebase-config.js`, then test Google and phone sign-in on iPhone and laptop.
 - Pick the next feature from "Ideas for later" in `README.md`. Features the Habit Tracker app
   has that we don't yet: quit habits, widgets, friends, Apple Health sync (not possible in a web app).

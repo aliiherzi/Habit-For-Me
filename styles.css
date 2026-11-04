@@ -870,6 +870,46 @@ textarea {
 .tips li + li { border-top: 1px solid var(--line); }
 .tip-ic { flex: none; font-size: 22px; }
 
+/* ---------- Account (sign in) ---------- */
+
+.account .help + .help { margin-top: 8px; }
+.acct-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  margin-top: 10px;
+  border-radius: 24px;
+  background: var(--card-2);
+  font-weight: 600;
+  text-align: center;
+}
+.acct-btn.google { border: 1px solid var(--line-strong); background: #ffffff; color: #1f1f1f; }
+.acct-btn .g { font-size: 18px; font-weight: 800; color: #4285f4; }
+.acct-field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.acct-field input {
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--bg);
+  font-size: 17px;
+  color: var(--text);
+}
+.account .save-btn { width: 100%; margin-top: 12px; }
+.account .save-btn:disabled { opacity: 0.6; }
+.account .link-btn { margin-top: 4px; }
+.account .form-error { margin: 10px 0 0; }
+.acct-who { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; }
+.acct-ic { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; background: var(--card-2); }
+.acct-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.acct-body b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acct-body span { font-size: 13px; color: var(--muted); }
+.acct-body .acct-status { color: #3ccf7a; }
+.acct-body .acct-status.bad { color: var(--danger); }
+
 /* ---------- Toast ---------- */
 
 .toast {

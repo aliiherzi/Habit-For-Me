@@ -39,7 +39,10 @@
   <dialog class="sheet" id="sheet" aria-labelledby="sheet-title"></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <input type="file" id="import-file" accept="application/json,.json" hidden>
+  <div id="recaptcha-box"></div>
 
+  <script src="firebase-config.js"></script>
   <script src="app.js"></script>
+  <script type="module" src="cloud.js"></script>
 </body>
 </html>

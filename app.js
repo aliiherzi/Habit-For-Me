@@ -157,6 +157,7 @@ const dayCode = (dow) => dayName(dow).slice(0, 3).toUpperCase(); // "MON"
 function defaultState() {
   return {
     version: 3,
+    savedAt: 0, // when anything last changed on this device (used for syncing)
     habits: [],
     log: {},
     memos: {},
@@ -250,6 +251,7 @@ function normalize(raw) {
   if (st.weekStart === 0 || st.weekStart === 1) s.settings.weekStart = st.weekStart;
   s.settings.name = cleanText(st.name, 30);
   if (typeof st.avatar === 'string' && st.avatar.trim()) s.settings.avatar = st.avatar.trim().slice(0, 8);
+  s.savedAt = Number.isFinite(raw.savedAt) ? raw.savedAt : 0;
   return s;
 }
 
@@ -265,15 +267,60 @@ function load() {
 
 function save() {
   startCache.clear();
+  state.savedAt = Date.now();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (err) {
     toast('Could not save. Storage may be full or blocked.');
   }
+  if (window.cloud.user) window.cloud.queuePush(); // signed in: send the change to your account
 }
 
 const startCache = new Map(); // first counted day of each habit, worked out once
 let state = load();
+
+// Signing in and syncing live in cloud.js. It fills this in once Firebase is set up (firebase-config.js).
+window.cloud = {
+  configured: Boolean(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey),
+  ready: false,
+  failed: false,
+  user: null,
+  status: 'off', // off, syncing, synced or error
+};
+
+/** Habits from your account replace the ones on this device (used by cloud.js). */
+function useCloudState(remote) {
+  state = normalize(remote);
+  startCache.clear();
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (err) {
+    // Storage blocked: the habits still show until the app closes.
+  }
+  applyTheme();
+  render();
+}
+
+/** The first sign-in on a device: keep the habits from both this device and your account. */
+function mergeStates(local, remote) {
+  const mine = normalize(local);
+  const out = normalize(remote);
+  const ids = new Set(out.habits.map((h) => h.id));
+  for (const h of mine.habits) if (!ids.has(h.id)) out.habits.push(h);
+  for (const [id, days] of Object.entries(mine.log)) {
+    const target = out.log[id] || (out.log[id] = {});
+    for (const [k, n] of Object.entries(days)) target[k] = Math.max(target[k] || 0, n);
+  }
+  for (const [id, days] of Object.entries(mine.memos)) {
+    const target = out.memos[id] || (out.memos[id] = {});
+    for (const [k, m] of Object.entries(days)) if (!target[k]) target[k] = m;
+  }
+  for (const [k, e] of Object.entries(mine.journal)) if (!out.journal[k]) out.journal[k] = e;
+  out.savedAt = Date.now();
+  return out;
+}
+
+window.habitApp = { getState: () => state, useCloudState, mergeStates };
 
 // Things about the screen that don't need saving.
 const ui = {
@@ -293,6 +340,9 @@ const ui = {
   menu: null, // which small menu is open: filter, pick or habit
   confirm: null, // which delete button is waiting for a second tap
   editing: null, // id of the habit open in the edit sheet
+  phone: null, // signing in with a phone code: { step: 'number' or 'code', number, busy, error }
+  signError: '', // why the last Google sign-in didn't work
+  signingIn: false, // a sign-in was started from this screen (so we can say "Signed in")
 };
 
 /* ---------- 4. Habit maths ---------- */
@@ -1147,6 +1197,8 @@ function renderMe() {
       <h1 class="me-title"><button class="me-name" data-action="profile" aria-label="${esc(`${s.name || 'You'}. Change your name`)}">${esc(s.name || 'You')}${ICON_SVG.pencil}</button></h1>
     </header>
 
+    ${accountCard()}
+
     <div class="wide-grid">
       <div>
         <section class="card">
@@ -1189,6 +1241,90 @@ function renderMe() {
     </div>
 
     <p class="about">Habit For Me · version 3.0</p>`;
+}
+
+/* Account: sign in with Google or a code by text message (cloud.js does the work). */
+
+function accountCard() {
+  const c = window.cloud;
+  const head = '<div class="card-head"><h2>Account</h2></div>';
+  if (!c.configured) {
+    return `
+      <section class="card account">${head}
+        <p class="help">Sign in with Google or your phone number to keep your habits safe and the same on your iPhone and laptop.</p>
+        <p class="help">Coming soon: sign-in needs a free Firebase project first. The steps are in <strong>docs/sign-in-setup.md</strong>.</p>
+      </section>`;
+  }
+  if (c.failed) return `<section class="card account">${head}<p class="help">Sign-in couldn’t load. Check your internet connection, then open the app again.</p></section>`;
+  if (!c.ready) return `<section class="card account">${head}<p class="help">Loading sign-in…</p></section>`;
+
+  if (c.user) {
+    const who = c.user.name || c.user.email || c.user.phone || 'Signed in';
+    const more = [c.user.email, c.user.phone].filter((x) => x && x !== who).join(' · ');
+    const status = {
+      syncing: 'Syncing…',
+      synced: '✓ Synced: the same habits on every device you sign in on',
+      error: 'Couldn’t sync. It tries again when you’re back online.',
+    }[c.status] || '';
+    return `
+      <section class="card account">${head}
+        <div class="acct-who">
+          <span class="acct-ic" aria-hidden="true">☁️</span>
+          <span class="acct-body">
+            <b>${esc(who)}</b>${more ? `<span>${esc(more)}</span>` : ''}
+            <span class="acct-status${c.status === 'error' ? ' bad' : ''}" role="status">${esc(status)}</span>
+          </span>
+        </div>
+        <button class="row danger" data-action="sign-out"><span>Sign out</span></button>
+      </section>`;
+  }
+
+  const p = ui.phone;
+  let body;
+  if (!p) {
+    body = `
+      <button class="acct-btn google" data-action="sign-google"><span class="g" aria-hidden="true">G</span>Continue with Google</button>
+      <button class="acct-btn" data-action="sign-phone"><span aria-hidden="true">📱</span>Continue with phone number</button>
+      ${ui.signError ? `<p class="form-error" role="alert">${esc(ui.signError)}</p>` : ''}`;
+  } else if (p.step === 'code') {
+    body = `
+      <label class="acct-field"><span>Type the 6-digit code we texted to ${esc(p.number)}</span>
+        <input type="text" id="phone-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+      </label>
+      <button class="save-btn" data-action="phone-confirm" ${p.busy ? 'disabled' : ''}>${p.busy ? 'Checking…' : 'Sign in'}</button>`;
+  } else {
+    body = `
+      <label class="acct-field"><span>Your phone number, starting with + and your country code</span>
+        <input type="tel" id="phone-number" inputmode="tel" autocomplete="tel" placeholder="+1 555 123 4567" value="${esc(p.number)}">
+      </label>
+      <button class="save-btn" data-action="phone-send" ${p.busy ? 'disabled' : ''}>${p.busy ? 'Sending…' : 'Text me a code'}</button>`;
+  }
+  return `
+    <section class="card account">${head}
+      <p class="help">Sign in to keep your habits safe and the same on your iPhone and laptop.</p>
+      ${body}
+      ${p && p.error ? `<p class="form-error" role="alert">${esc(p.error)}</p>` : ''}
+      ${p ? '<button class="link-btn" data-action="phone-cancel">Cancel</button>' : ''}
+    </section>`;
+}
+
+/** Plain words for what went wrong while signing in. */
+function signInError(err) {
+  const words = {
+    'auth/invalid-phone-number': 'That number doesn’t look right. Start with + and your country code.',
+    'auth/missing-phone-number': 'Type your phone number first.',
+    'auth/invalid-verification-code': 'That code isn’t right. Check the text message and try again.',
+    'auth/missing-verification-code': 'Type the code from the text message first.',
+    'auth/code-expired': 'That code has run out. Ask for a new one.',
+    'auth/too-many-requests': 'Too many tries. Wait a little, then try again.',
+    'auth/popup-closed-by-user': 'Sign-in was closed before it finished.',
+    'auth/cancelled-popup-request': 'Sign-in was closed before it finished.',
+    'auth/network-request-failed': 'No internet connection. Try again when you’re online.',
+    'auth/operation-not-allowed': 'This way of signing in isn’t switched on in Firebase yet.',
+    'auth/billing-not-enabled': 'Text-message codes need the Blaze plan switched on in Firebase.',
+    'auth/unauthorized-domain': 'This web address isn’t allowed yet. Add it in Firebase → Authentication → Settings → Authorized domains.',
+  };
+  return words[err && err.code] || 'Something went wrong signing in. Please try again.';
 }
 
 function notifControl() {
@@ -1929,6 +2065,55 @@ document.addEventListener('click', (e) => {
       render();
       if (h && h.reminder) downloadCalendar(h);
       break;
+    case 'sign-google':
+      ui.signError = '';
+      ui.signingIn = true;
+      window.cloud.google().catch((err) => {
+        ui.signingIn = false;
+        ui.signError = signInError(err);
+        render();
+      });
+      break;
+    case 'sign-phone':
+      ui.phone = { step: 'number', number: '', busy: false, error: '' };
+      ui.signError = '';
+      render();
+      document.getElementById('phone-number').focus();
+      break;
+    case 'phone-send': {
+      const typed = document.getElementById('phone-number').value;
+      const number = typed.replace(/[^\d+]/g, '');
+      ui.phone = { ...ui.phone, number, busy: true, error: '' };
+      render();
+      window.cloud.sendCode(number).then(() => {
+        ui.phone = { ...ui.phone, step: 'code', busy: false };
+        render();
+        document.getElementById('phone-code').focus();
+      }).catch((err) => {
+        ui.phone = { ...ui.phone, busy: false, error: signInError(err) };
+        render();
+      });
+      break;
+    }
+    case 'phone-confirm': {
+      const code = document.getElementById('phone-code').value.trim();
+      ui.phone = { ...ui.phone, busy: true, error: '' };
+      ui.signingIn = true;
+      render();
+      window.cloud.confirmCode(code).catch((err) => {
+        ui.signingIn = false;
+        ui.phone = { ...ui.phone, busy: false, error: signInError(err) };
+        render();
+      });
+      break;
+    }
+    case 'phone-cancel':
+      ui.phone = null;
+      render();
+      break;
+    case 'sign-out':
+      window.cloud.signOut().then(() => toast('Signed out. Your habits stay on this device.'));
+      break;
     case 'notif':
       askNotifications();
       break;
@@ -2048,6 +2233,16 @@ if (darkQuery.addEventListener) {
     render();
   });
 }
+
+// Signing in or syncing changed: redraw the Me page (but not while you're typing a phone number or code).
+window.addEventListener('cloud-change', () => {
+  if (window.cloud.user && ui.signingIn) {
+    ui.signingIn = false;
+    ui.phone = null;
+    toast('Signed in. Your habits now stay in sync.');
+  }
+  if (ui.tab === 'me' && !ui.detail && !(ui.phone && document.activeElement && document.activeElement.closest('.account'))) render();
+});
 
 // If the app stays open past midnight, move "Today" to the new day.
 let lastToday = todayKey();

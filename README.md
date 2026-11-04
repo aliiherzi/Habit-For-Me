@@ -22,6 +22,8 @@ Check off your habits every day, build streaks, and see your progress.
 - [x] Archive a habit instead of deleting it
 - [x] Me page: your name and picture, moods, a daily quote, settings and backups
 - [x] Fits every screen: phones, tablets and iPads, and laptops
+- [ ] Sign in with Google or a code by text message, and keep the same habits on every device
+  (built and switched off: it needs a free Firebase project, see [docs/sign-in-setup.md](docs/sign-in-setup.md))
 - [x] Dark look by default, a sun/moon button on Today to switch to light, and Auto in Me → Settings
 - [x] Works offline and installs on your phone's home screen like an app
 - [x] Backup and restore (download your data as a file, load it on another device)
@@ -75,6 +77,8 @@ Plain **HTML, CSS and JavaScript**. There are no frameworks and nothing to insta
 | `index.html` | The page itself: loads everything and holds the floating menu |
 | `styles.css` | All the colours and layout, including dark mode and bigger screens |
 | `app.js` | The app: screens, streak maths, saving data |
+| `cloud.js` | Sign-in (Google or phone code) and syncing between devices, using Firebase |
+| `firebase-config.js` | Your Firebase project's settings (empty until sign-in is set up) |
 | `sw.js` | Service worker that makes the app work offline |
 | `manifest.webmanifest` | App name and icons, so phones can install it |
 | `icons/` | App icons in different sizes |
