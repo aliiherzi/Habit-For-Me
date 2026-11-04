@@ -9,7 +9,7 @@
     2. Date helpers     - dates are stored as "YYYY-MM-DD" strings
     3. Saving/loading   - read and write data in localStorage
     4. Habit maths      - streaks, completion rates, daily progress
-    5. Screens          - Today, Habit details, Progress, Settings
+    5. Screens          - Today, All habits, Habit details, Stats, Me
     6. Add/edit sheet   - the form for creating or changing a habit
     7. Actions          - what happens when you tap things
 */
@@ -17,22 +17,24 @@
 /* ---------- 1. Constants ---------- */
 
 const STORAGE_KEY = 'habit-for-me:v1';
-const COLORS = ['#2f9e6b', '#1a8fd6', '#7a5af5', '#d6409f', '#e5484d', '#ef7a12', '#b98900', '#12a594'];
+const COLORS = ['#ee4d6f', '#5b7fd8', '#12a4b6', '#1faf7a', '#f0883e', '#d04aae', '#8b63d6', '#e0a21f'];
 const ICONS = ['💧', '📚', '🏃', '🧘', '🥗', '😴', '✍️', '🎸', '🧹', '💊', '🚭', '☀️', '🪥', '🚶', '💪', '🙏', '🍎', '💻', '🌱', '🎯'];
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]; // 0 = Sunday ... 6 = Saturday
 const SUGGESTIONS = [
-  { name: 'Drink water', icon: '💧', color: '#1a8fd6', goal: 8 },
-  { name: 'Read 20 minutes', icon: '📚', color: '#7a5af5', goal: 1 },
-  { name: 'Go for a walk', icon: '🚶', color: '#2f9e6b', goal: 1 },
-  { name: 'Meditate', icon: '🧘', color: '#d6409f', goal: 1 },
-  { name: 'Sleep by 11pm', icon: '😴', color: '#12a594', goal: 1 },
+  { name: 'Drink water', icon: '💧', color: '#12a4b6', goal: 8 },
+  { name: 'Read 20 minutes', icon: '📚', color: '#8b63d6', goal: 1 },
+  { name: 'Go for a walk', icon: '🚶', color: '#5b7fd8', goal: 1 },
+  { name: 'Meditate', icon: '🧘', color: '#d04aae', goal: 1 },
+  { name: 'Sleep by 11pm', icon: '😴', color: '#1faf7a', goal: 1 },
 ];
+const RANGES = [['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']];
 
 const ICON_SVG = {
   tick: '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
   right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
 };
 
 /* ---------- 2. Date helpers ---------- */
@@ -143,11 +145,12 @@ let state = load();
 
 // Things about the screen that don't need saving.
 const ui = {
-  tab: 'today',
+  tab: 'today', // today, habits, stats or me
   date: todayKey(), // the day shown on the Today screen
   detail: null, // id of the habit being viewed, or null
   month: null, // "YYYY-MM" shown in the habit calendar
-  peek: null, // { chart, key } - the day tapped on a Progress chart
+  range: 'week', // Stats: week, month or year
+  anchor: todayKey(), // Stats: a day inside the week, month or year being shown
   confirm: null, // which delete button is waiting for a second tap
   editing: null, // id of the habit open in the edit sheet
 };
@@ -234,6 +237,46 @@ function dayProgress(d) {
   return due.reduce((sum, h) => sum + Math.min(countOf(h, k) / h.goal, 1), 0) / due.length;
 }
 
+/** Numbers for the Weekly report: share of scheduled days met, completions, perfect days. */
+function weekSummary(days) {
+  const tk = todayKey();
+  let due = 0;
+  let met = 0;
+  let total = 0;
+  let perfect = 0;
+  for (const d of days) {
+    const k = keyOf(d);
+    if (k > tk) continue;
+    if (dayProgress(d) === 1) perfect++;
+    for (const h of state.habits) {
+      const done = isDone(h, k);
+      if (done) total++;
+      if (!isDue(h, d)) continue;
+      if (done) {
+        due++;
+        met++;
+      } else if (k !== tk) due++;
+    }
+  }
+  return { met: due ? met / due : null, total, perfect };
+}
+
+/** Text colour (white or dark) that is easy to read on a habit's colour. */
+function inkOn(hex) {
+  const lin = (i) => {
+    const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  const lum = 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5);
+  return 1.05 / (lum + 0.05) >= 3 ? '#ffffff' : '#1e1e24';
+}
+
+/** CSS variables for a habit: its colour, text colour on it, and tick colour on white. */
+function habitVars(h) {
+  const ink = inkOn(h.color);
+  return `--c:${h.color};--ink:${ink};--tc:${ink === '#ffffff' ? h.color : '#1e1e24'}`;
+}
+
 function scheduleText(h) {
   const days = h.days.join(',');
   if (days === '0,1,2,3,4,5,6') return 'Every day';
@@ -261,16 +304,19 @@ function render() {
     focusSel = `[data-action="${active.dataset.action}"]`;
     if (active.dataset.id) focusSel += `[data-id="${CSS.escape(active.dataset.id)}"]`;
     if (active.dataset.key) focusSel += `[data-key="${active.dataset.key}"]`;
+    if (active.dataset.range) focusSel += `[data-range="${active.dataset.range}"]`;
   }
 
   const habit = ui.detail && findHabit(ui.detail);
   if (ui.detail && !habit) ui.detail = null;
 
   if (habit) view.innerHTML = renderDetail(habit);
+  else if (ui.tab === 'habits') view.innerHTML = renderHabits();
   else if (ui.tab === 'stats') view.innerHTML = renderStats();
-  else if (ui.tab === 'settings') view.innerHTML = renderSettings();
+  else if (ui.tab === 'me') view.innerHTML = renderMe();
   else view.innerHTML = renderToday();
 
+  document.body.classList.toggle('tinted', ui.tab === 'me' && !habit);
   document.querySelectorAll('.tab').forEach((b) => {
     const on = b.dataset.tab === ui.tab;
     b.classList.toggle('active', on);
@@ -278,11 +324,28 @@ function render() {
     else b.removeAttribute('aria-current');
   });
 
+  // Keep the chosen day in view in the date strip.
+  const strip = view.querySelector('.strip');
+  const chosen = strip && strip.querySelector('[aria-current="date"]');
+  if (chosen) strip.scrollLeft = chosen.offsetLeft - (strip.clientWidth - chosen.offsetWidth) / 2;
+
   if (focusSel) {
     const el = view.querySelector(focusSel);
     if (el) el.focus({ preventScroll: true });
   }
 }
+
+/** Top bar: optional button on the left, title in the middle, button on the right. */
+function topbar(title, { left = '', right = '', sub = '' } = {}) {
+  return `
+    <header class="topbar">
+      <div class="tb-side">${left}</div>
+      <div class="tb-title"><h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ''}</div>
+      <div class="tb-side end">${right}</div>
+    </header>`;
+}
+
+const addButton = `<button class="add-btn" data-action="add" aria-label="Add a new habit">${ICON_SVG.plus}</button>`;
 
 /* Today */
 
@@ -291,103 +354,108 @@ function renderToday() {
   const sel = parseKey(ui.date);
   const isToday = ui.date === tk;
   const isYesterday = ui.date === keyOf(addDays(new Date(), -1));
-  const title = isToday ? 'Today' : isYesterday ? 'Yesterday' : fmt(sel, { weekday: 'long' });
-  const sub = isToday
-    ? fmt(sel, { weekday: 'long', month: 'long', day: 'numeric' })
-    : fmt(sel, { month: 'long', day: 'numeric', year: 'numeric' });
-
-  const head = `
-    <header class="page-head">
-      <div><h1>${esc(title)}</h1><p class="muted">${esc(sub)}</p></div>
-      ${state.habits.length ? `
-        <div class="head-actions">
-          ${isToday ? '' : '<button class="pill" data-action="go-today">Today</button>'}
-          <button class="add-btn" data-action="add" aria-label="Add a new habit">${ICON_SVG.plus}</button>
-        </div>` : ''}
-    </header>`;
+  const title = isToday ? 'Today' : isYesterday ? 'Yesterday' : fmt(sel, { month: 'long', day: 'numeric' });
 
   if (!state.habits.length) {
-    return `${head}
-      <section class="card empty">
-        <div class="big" aria-hidden="true">🌱</div>
-        <h2>Start your first habit</h2>
-        <p class="muted">Small things, done every day, add up. Pick one to begin, or make your own.</p>
+    return `${topbar('Today', { right: addButton })}
+      <section class="empty">
+        <div class="empty-art" aria-hidden="true"><span>🚀</span></div>
+        <h2>No habits yet</h2>
+        <p class="muted">Tap <strong>+</strong> to add your first habit, or start with one of these.</p>
         <div class="chips">
           ${SUGGESTIONS.map((s, i) => `<button class="chip" data-action="suggest" data-i="${i}">${s.icon} ${esc(s.name)}</button>`).join('')}
         </div>
-        <button class="primary" data-action="add">Create my own habit</button>
       </section>`;
   }
 
   const due = state.habits.filter((h) => isDue(h, sel));
   const resting = state.habits.length - due.length;
   const done = due.filter((h) => isDone(h, ui.date)).length;
-  const p = dayProgress(sel) || 0;
+  const sub = due.length ? `${done} of ${due.length} done` : fmt(sel, { weekday: 'long' });
+  const left = isToday ? '' : '<button class="pill" data-action="go-today">Today</button>';
 
-  return `${head}
-    ${weekStrip(sel)}
-    ${due.length ? `
-      <section class="card summary" aria-label="Progress for this day">
-        <div class="summary-row"><strong>${done} of ${due.length} done</strong><span class="muted">${pct(p)}</span></div>
-        <div class="bar"><span style="width:${p * 100}%"></span></div>
-      </section>
-      <ul class="habit-list">${due.map((h) => habitRow(h, ui.date)).join('')}</ul>`
-    : '<p class="empty-note">Nothing scheduled for this day. Enjoy the rest! 🌿</p>'}
+  return `${topbar(title, { left, right: addButton, sub })}
+    ${dateStrip()}
+    ${due.length
+      ? `<ul class="bars">${due.map((h) => habitBar(h, ui.date)).join('')}</ul>`
+      : '<p class="empty-note">Nothing scheduled for this day. Enjoy the rest! 🌿</p>'}
     ${resting ? `<p class="muted small center rest-note">${plural(resting, 'habit')} not scheduled ${isToday ? 'today' : 'this day'}.</p>` : ''}`;
 }
 
-function weekStrip(sel) {
+/** A scrolling row of days: the last five weeks up to the end of this week. */
+function dateStrip() {
   const tk = todayKey();
-  const start = startOfWeek(sel);
-  const atLatestWeek = keyOf(addDays(start, 6)) >= tk;
+  const today = parseKey(tk);
+  const lastKey = keyOf(addDays(startOfWeek(today), 6));
+  const earliest = keyOf(addDays(today, -34));
+  let d = parseKey(ui.date < earliest ? ui.date : earliest);
   let cells = '';
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(start, i);
+  for (; keyOf(d) <= lastKey; d = addDays(d, 1)) {
     const k = keyOf(d);
     const future = k > tk;
-    const p = future ? 0 : dayProgress(d) || 0;
-    const label = `${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}${future ? '' : `, ${pct(p)} done`}`;
+    const p = future ? null : dayProgress(d);
+    const cls = ['sd'];
+    if (k === ui.date) cls.push('sel');
+    if (k === tk) cls.push('today');
+    if (future) cls.push('future');
+    const fill = p === 1 ? ' full' : p > 0 ? ' some' : '';
+    const label = `${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}${p === null ? '' : `, ${pct(p)} done`}`;
     cells += `
-      <button class="day${k === ui.date ? ' sel' : ''}${k === tk ? ' is-today' : ''}" data-action="pick-day" data-key="${k}"
-        ${future ? 'disabled' : ''} aria-label="${esc(label)}" ${k === ui.date ? 'aria-current="date"' : ''}>
-        <span class="dow" aria-hidden="true">${esc(fmt(d, { weekday: 'narrow' }))}</span>
-        <span class="ring" style="--p:${p.toFixed(3)}" aria-hidden="true"><span>${d.getDate()}</span></span>
+      <button class="${cls.join(' ')}" data-action="${future ? 'future-day' : 'pick-day'}" data-key="${k}" aria-label="${esc(label)}"${k === ui.date ? ' aria-current="date"' : ''}>
+        <span class="sd-dow" aria-hidden="true">${esc(fmt(d, { weekday: 'short' }).slice(0, 2))}</span>
+        <span class="sd-num${fill}" aria-hidden="true">${d.getDate()}</span>
       </button>`;
   }
-  return `
-    <div class="week">
-      <button class="icon-btn" data-action="week" data-delta="-7" aria-label="Previous week">${ICON_SVG.left}</button>
-      <div class="days">${cells}</div>
-      <button class="icon-btn" data-action="week" data-delta="7" aria-label="Next week" ${atLatestWeek ? 'disabled' : ''}>${ICON_SVG.right}</button>
-    </div>`;
+  return `<div class="strip" role="group" aria-label="Pick a day">${cells}</div>`;
 }
 
-function habitRow(h, k) {
+/** One habit as a bar that fills with its colour as you make progress. */
+function habitBar(h, k) {
   const c = countOf(h, k);
   const done = c >= h.goal;
   const p = Math.min(c / h.goal, 1);
   const streak = currentStreak(h);
   const parts = [];
-  if (h.goal > 1) parts.push(`${Math.min(c, h.goal)} of ${h.goal}`);
-  parts.push(streak ? `🔥 ${streak} in a row` : scheduleText(h));
+  if (h.goal > 1) parts.push(`${Math.min(c, h.goal)}/${h.goal} times`);
+  parts.push(streak ? `🔥 ${plural(streak, 'day')}` : scheduleText(h));
   const label = done
     ? `${h.name}: done. Tap to undo.`
     : h.goal > 1 ? `${h.name}: ${c} of ${h.goal}. Tap to add one.` : `${h.name}: not done. Tap to mark done.`;
+  const mark = done ? ICON_SVG.tick : h.goal > 1 ? '<b>+1</b>' : '';
 
   return `
-    <li class="habit${done ? ' done' : ''}" style="--c:${h.color}">
-      <button class="habit-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(h.name)} details">
-        <span class="h-icon" aria-hidden="true">${esc(h.icon)}</span>
-        <span class="h-body"><span class="h-name">${esc(h.name)}</span><span class="h-meta">${esc(parts.join(' · '))}</span></span>
+    <li class="hb${done ? ' done' : ''}" style="${habitVars(h)};--p:${p.toFixed(3)}">
+      <button class="hb-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(h.name)} details">
+        <span class="hb-icon" aria-hidden="true">${esc(h.icon)}</span>
+        <span class="hb-body"><span class="hb-name">${esc(h.name)}</span><span class="hb-meta">${esc(parts.join(' · '))}</span></span>
       </button>
-      <button class="check" data-action="tick" data-id="${esc(h.id)}" aria-pressed="${done}" aria-label="${esc(label)}">
-        <svg viewBox="0 0 44 44" aria-hidden="true">
-          <circle class="track" cx="22" cy="22" r="19"/>
-          <circle class="prog" cx="22" cy="22" r="19" pathLength="100" style="stroke-dasharray:${(p * 100).toFixed(1)} 100;${p ? '' : 'opacity:0'}"/>
-        </svg>
-        <span class="check-in">${done ? ICON_SVG.tick : h.goal > 1 ? `<small>${c}/${h.goal}</small>` : ''}</span>
-      </button>
+      <button class="hb-check" data-action="tick" data-id="${esc(h.id)}" aria-pressed="${done}" aria-label="${esc(label)}"><span>${mark}</span></button>
     </li>`;
+}
+
+/* All habits */
+
+function renderHabits() {
+  const head = topbar('All habits', { right: addButton, sub: state.habits.length ? plural(state.habits.length, 'habit') : '' });
+  if (!state.habits.length) {
+    return `<div class="narrow">${head}<p class="empty-note">No habits yet. Tap <strong>+</strong> to add one.</p></div>`;
+  }
+  const rows = state.habits.map((h) => {
+    const s = currentStreak(h);
+    return `
+      <li>
+        <button class="lrow" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}">
+          <span class="h-icon" aria-hidden="true">${esc(h.icon)}</span>
+          <span class="lr-body">
+            <span class="lr-name">${esc(h.name)}</span>
+            <span class="lr-meta">${esc(scheduleText(h))}${h.goal > 1 ? ` · ${h.goal} times a day` : ''}</span>
+          </span>
+          ${s ? `<span class="lr-streak" aria-label="${esc(`${plural(s, 'day')} in a row`)}">🔥 ${s}</span>` : ''}
+          <span class="lr-chev" aria-hidden="true">${ICON_SVG.right}</span>
+        </button>
+      </li>`;
+  }).join('');
+  return `<div class="narrow">${head}<ul class="lgroup">${rows}</ul></div>`;
 }
 
 /* Habit details */
@@ -427,184 +495,277 @@ function renderDetail(h) {
   }
 
   const armed = ui.confirm === `delete:${h.id}`;
+  const days = (n) => `<small>${n === 1 ? 'day' : 'days'}</small>`;
 
   return `
-    <div class="detail-head">
-      <button class="back" data-action="back">${ICON_SVG.left}<span>Back</span></button>
-      <button class="pill" data-action="edit" data-id="${esc(h.id)}">Edit</button>
-    </div>
-    <section class="hero" style="--c:${h.color}">
-      <span class="h-icon" aria-hidden="true">${esc(h.icon)}</span>
-      <div>
-        <h1>${esc(h.name)}</h1>
-        <p class="muted">${esc(scheduleText(h))}${h.goal > 1 ? ` · ${h.goal} times a day` : ''}</p>
+    <div class="narrow">
+      <div class="detail-head">
+        <button class="back" data-action="back">${ICON_SVG.left}<span>Back</span></button>
+        <button class="pill" data-action="edit" data-id="${esc(h.id)}">Edit</button>
       </div>
-    </section>
+      <section class="hero" style="${habitVars(h)}">
+        <span class="h-icon" aria-hidden="true">${esc(h.icon)}</span>
+        <div>
+          <h1>${esc(h.name)}</h1>
+          <p class="muted">${esc(scheduleText(h))}${h.goal > 1 ? ` · ${h.goal} times a day` : ''}</p>
+        </div>
+      </section>
 
-    <div class="tiles">
-      <div class="tile"><div class="label">Current streak</div><div class="value">${cur}</div><div class="sub">${cur === 1 ? 'day' : 'days'} in a row</div></div>
-      <div class="tile"><div class="label">Best streak</div><div class="value">${best}</div><div class="sub">${best === 1 ? 'day' : 'days'}</div></div>
-      <div class="tile"><div class="label">Last 30 days</div><div class="value">${r.pct === null ? '–' : pct(r.pct)}</div><div class="sub">${r.done} of ${r.due} scheduled days</div></div>
-      <div class="tile"><div class="label">Total</div><div class="value">${total}</div><div class="sub">${total === 1 ? 'day' : 'days'} completed</div></div>
-    </div>
-
-    <h2 class="section-title">History</h2>
-    <section class="card" style="--c:${h.color}">
-      <div class="cal-head">
-        <button class="icon-btn" data-action="month" data-delta="-1" aria-label="Previous month">${ICON_SVG.left}</button>
-        <strong>${esc(fmt(first, { month: 'long', year: 'numeric' }))}</strong>
-        <button class="icon-btn" data-action="month" data-delta="1" aria-label="Next month" ${atLatestMonth ? 'disabled' : ''}>${ICON_SVG.right}</button>
+      <div class="tiles">
+        <div class="tile k1"><div class="value">${cur}${days(cur)}</div><div class="label">Current streak</div></div>
+        <div class="tile k2"><div class="value">${best}${days(best)}</div><div class="label">Best streak</div></div>
+        <div class="tile k3"><div class="value">${r.pct === null ? '–' : pct(r.pct)}</div><div class="label">Last 30 days</div><div class="sub">${r.done} of ${r.due} scheduled days</div></div>
+        <div class="tile k4"><div class="value">${total}</div><div class="label">Total done</div></div>
       </div>
-      <div class="cal">${cells}</div>
-      <div class="cal-legend">
-        <span><i class="k-done"></i>Done</span><span><i class="k-part"></i>Partly</span><span><i class="k-miss"></i>Missed</span>
-      </div>
-      <p class="muted small">Tap a day to mark it done or not done. You can fill in days you forgot.</p>
-    </section>
 
-    <button class="danger-btn${armed ? ' armed' : ''}" data-action="delete" data-id="${esc(h.id)}">
-      ${armed ? 'Tap again to delete for good' : 'Delete habit'}
-    </button>`;
+      <section class="card" style="${habitVars(h)}">
+        <div class="cal-head">
+          <button class="icon-btn" data-action="month" data-delta="-1" aria-label="Previous month">${ICON_SVG.left}</button>
+          <strong>${esc(fmt(first, { month: 'long', year: 'numeric' }))}</strong>
+          <button class="icon-btn" data-action="month" data-delta="1" aria-label="Next month" ${atLatestMonth ? 'disabled' : ''}>${ICON_SVG.right}</button>
+        </div>
+        <div class="cal">${cells}</div>
+        <div class="cal-legend">
+          <span><i class="k-done"></i>Done</span><span><i class="k-part"></i>Partly</span><span><i class="k-miss"></i>Missed</span>
+        </div>
+        <p class="muted small">Tap a day to mark it done or not done. You can fill in days you forgot.</p>
+      </section>
+
+      <button class="danger-btn${armed ? ' armed' : ''}" data-action="delete" data-id="${esc(h.id)}">
+        ${armed ? 'Tap again to delete for good' : 'Delete habit'}
+      </button>
+    </div>`;
 }
 
-/* Progress */
+/* Stats: Weekly, Monthly and Yearly reports */
 
 function renderStats() {
-  const head = '<header class="page-head"><div><h1>Progress</h1><p class="muted">How your habits are going</p></div></header>';
+  const tabs = RANGES.map(([r, label]) =>
+    `<button class="${ui.range === r ? 'on' : ''}" data-action="range" data-range="${r}" aria-pressed="${ui.range === r}">${label}</button>`).join('');
+  const head = `<header class="stats-head"><div class="range-tabs" role="group" aria-label="Report period">${tabs}</div></header>`;
   if (!state.habits.length) return `${head}<p class="empty-note">Add a habit to see your progress here.</p>`;
 
   const tk = todayKey();
-  const now = parseKey(tk);
-  const dueToday = state.habits.filter((h) => isDue(h, now));
-  const doneToday = dueToday.filter((h) => isDone(h, tk)).length;
-
-  const last7 = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = addDays(now, -i);
-    last7.push({ d, k: keyOf(d), p: dayProgress(d) });
+  const a = parseKey(ui.anchor);
+  let label;
+  let body;
+  let atLatest;
+  if (ui.range === 'month') {
+    const first = new Date(a.getFullYear(), a.getMonth(), 1);
+    label = fmt(first, { month: 'long', year: 'numeric' });
+    atLatest = keyOf(first).slice(0, 7) >= tk.slice(0, 7);
+    body = monthlyView(first);
+  } else if (ui.range === 'year') {
+    const y = a.getFullYear();
+    label = String(y);
+    atLatest = y >= parseKey(tk).getFullYear();
+    body = yearlyView(y);
+  } else {
+    const start = startOfWeek(a);
+    const end = addDays(start, 6);
+    label = `${fmt(start, { month: 'short', day: 'numeric' })} – ${fmt(end, { month: 'short', day: 'numeric' })}`;
+    atLatest = keyOf(end) >= tk;
+    body = weeklyView(start);
   }
-  const scored = last7.filter((x) => x.p !== null);
-  const avg7 = scored.length ? scored.reduce((s, x) => s + x.p, 0) / scored.length : null;
-
-  let perfect = 0;
-  for (let i = 0; i < 30; i++) if (dayProgress(addDays(now, -i)) === 1) perfect++;
-
-  let top = null;
-  for (const h of state.habits) {
-    const s = currentStreak(h);
-    if (!top || s > top.s) top = { h, s };
-  }
-
-  const describe = (d, p) => `${fmt(d, { weekday: 'long', month: 'short', day: 'numeric' })}: ${p === null ? 'nothing scheduled' : `${pct(p)} done`}`;
-
-  // Last 7 days bar chart
-  const barKey = ui.peek && ui.peek.chart === 'bar' ? ui.peek.key : tk;
-  const barSel = last7.find((x) => x.k === barKey) || last7[6];
-  const bars = last7.map((x) => `
-    <button class="${x.k === barSel.k ? 'sel' : ''}" data-action="peek" data-chart="bar" data-key="${x.k}" aria-label="${esc(describe(x.d, x.p))}">
-      <span class="col${x.p ? '' : ' zero'}" style="height:${x.p ? Math.max(x.p * 100, 3) : 0}%"></span>
-    </button>`).join('');
-  const barLabels = last7.map((x) => `<span class="${x.k === tk ? 'now' : ''}">${esc(fmt(x.d, { weekday: 'narrow' }))}</span>`).join('');
-
-  // Last 12 weeks heatmap
-  const weeks = 12;
-  const hStart = startOfWeek(addDays(now, -7 * (weeks - 1)));
-  const heatKey = ui.peek && ui.peek.chart === 'heat' ? ui.peek.key : tk;
-  let heat = '';
-  let heatSel = { d: now, p: dayProgress(now) };
-  for (let i = 0; i < weeks * 7; i++) {
-    const d = addDays(hStart, i);
-    const k = keyOf(d);
-    if (k > tk) { heat += '<span class="blank"></span>'; continue; }
-    const p = dayProgress(d);
-    const lvl = p === null ? 'none' : p === 0 ? 'l0' : p < 1 / 3 ? 'l1' : p < 2 / 3 ? 'l2' : p < 1 ? 'l3' : 'l4';
-    if (k === heatKey) heatSel = { d, p };
-    heat += `<button class="${lvl}${k === heatKey ? ' sel' : ''}" data-action="peek" data-chart="heat" data-key="${k}" aria-label="${esc(describe(d, p))}"></button>`;
-  }
-
-  const rows = state.habits.map((h) => {
-    const r = rate(h, 30);
-    return `
-      <li class="rate-row" style="--c:${h.color}">
-        <span class="r-icon" aria-hidden="true">${esc(h.icon)}</span>
-        <div class="r-body">
-          <div class="r-name">${esc(h.name)}</div>
-          <div class="bar"><span style="width:${(r.pct || 0) * 100}%"></span></div>
-        </div>
-        <span class="r-pct">${r.pct === null ? '–' : pct(r.pct)}</span>
-      </li>`;
-  }).join('');
 
   return `${head}
-    <div class="tiles">
-      <div class="tile"><div class="label">Today</div><div class="value">${doneToday}/${dueToday.length}</div><div class="sub">habits done</div></div>
-      <div class="tile"><div class="label">Last 7 days</div><div class="value">${avg7 === null ? '–' : pct(avg7)}</div><div class="sub">average done</div></div>
-      <div class="tile"><div class="label">Perfect days</div><div class="value">${perfect}</div><div class="sub">in the last 30 days</div></div>
-      <div class="tile"><div class="label">Top streak</div><div class="value">${top.s}</div><div class="sub">${esc(`${top.h.icon} ${top.h.name}`)}</div></div>
-    </div>
-
-    <h2 class="section-title">Last 7 days</h2>
-    <section class="card">
-      <p class="readout">${esc(describe(barSel.d, barSel.p))}</p>
-      <div class="chart">${bars}</div>
-      <div class="chart-labels" aria-hidden="true">${barLabels}</div>
-    </section>
-
-    <h2 class="section-title">Last 12 weeks</h2>
-    <section class="card">
-      <p class="readout">${esc(describe(heatSel.d, heatSel.p))}</p>
-      <div class="heat">${heat}</div>
-      <div class="legend" aria-hidden="true">Less <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> More</div>
-    </section>
-
-    <h2 class="section-title">Each habit · last 30 days</h2>
-    <section class="card"><ul class="rate-list">${rows}</ul></section>`;
+    <section class="report">
+      <div class="banner" aria-hidden="true"><span class="sun">☀️</span><span class="script">Habit For Me</span><span class="moon">🌙</span></div>
+      <div class="period">
+        <button class="dot-btn" data-action="period" data-delta="-1" aria-label="Earlier">${ICON_SVG.left}</button>
+        <span class="period-label">${esc(label)}</span>
+        <button class="dot-btn" data-action="period" data-delta="1" aria-label="Later" ${atLatest ? 'disabled' : ''}>${ICON_SVG.right}</button>
+      </div>
+      ${body}
+    </section>`;
 }
 
-/* Settings */
+/** Class for one day of a report grid: done, part(ly), miss(ed), off (not scheduled) or future. */
+function dayClass(h, d, start, tk) {
+  const k = keyOf(d);
+  const c = countOf(h, k);
+  if (k > tk) return 'future';
+  if (c >= h.goal) return 'done';
+  if (c > 0) return 'part';
+  return isDue(h, d, start) ? 'miss' : 'off';
+}
 
-function renderSettings() {
+function weeklyView(start) {
+  const tk = todayKey();
+  const days = ALL_DAYS.map((i) => addDays(start, i));
+  const head = days.map((d) => `<span class="${keyOf(d) === tk ? 'now' : ''}">${esc(fmt(d, { weekday: 'narrow' }))}</span>`).join('');
+
+  const rows = state.habits.map((h) => {
+    const s = startKey(h);
+    let due = 0;
+    let met = 0;
+    const cells = days.map((d) => {
+      const k = keyOf(d);
+      const cls = dayClass(h, d, s, tk);
+      if (k <= tk && isDue(h, d, s)) {
+        if (cls === 'done') { due++; met++; } else if (k !== tk) due++;
+      }
+      return `<span class="sq ${cls}"></span>`;
+    }).join('');
+    const perfect = due > 0 && met === due;
+    return `
+      <div class="wk-row" style="${habitVars(h)}">
+        <div class="wk-name"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</div>
+        <div class="wk-grid" role="img" aria-label="${esc(`${h.name}: ${met} of ${due} scheduled days done${perfect ? ', perfect' : ''}`)}">
+          ${cells}<span class="badge">${perfect ? '<span title="Perfect">🏅</span>' : ''}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  const sum = weekSummary(days);
+  const top = Math.max(0, ...state.habits.map((h) => currentStreak(h)));
+  return `
+    <div class="wk">
+      <div class="wk-row wk-headrow" aria-hidden="true"><div class="wk-name"></div><div class="wk-grid wk-head">${head}<span></span></div></div>
+      ${rows}
+    </div>
+    <div class="kpis">
+      <div class="kpi k1"><b>${sum.met === null ? '–' : pct(sum.met)}</b><span>Met</span></div>
+      <div class="kpi k2"><b>${sum.perfect}</b><span>Perfect days</span></div>
+      <div class="kpi k3"><b>${sum.total}</b><span>Total done</span></div>
+      <div class="kpi k4"><b>${top}<small>d</small></b><span>Top streak</span></div>
+    </div>`;
+}
+
+function monthlyView(first) {
+  const tk = todayKey();
+  const y = first.getFullYear();
+  const m = first.getMonth();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const lead = (first.getDay() - state.settings.weekStart + 7) % 7;
+  const dows = weekOrder().map((d) => `<span class="mc-dow">${esc(dayName(d, 'narrow'))}</span>`).join('');
+
+  const cards = state.habits.map((h) => {
+    const s = startKey(h);
+    let met = 0;
+    let cells = '<span></span>'.repeat(lead);
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(y, m, i);
+      let cls = dayClass(h, d, s, tk);
+      if (cls === 'done') met++;
+      if (keyOf(d) === tk) cls += ' today';
+      cells += `<span class="${cls}">${i}</span>`;
+    }
+    return `
+      <button class="mcard" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}" aria-label="${esc(`${h.name}: done on ${plural(met, 'day')} this month. Open details.`)}">
+        <span class="mc-title"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</span>
+        <span class="mc-grid" aria-hidden="true">${dows}${cells}</span>
+        <span class="mc-foot" aria-hidden="true">${plural(met, 'day')}</span>
+      </button>`;
+  }).join('');
+  return `<div class="months">${cards}</div>`;
+}
+
+/** One row per month, one square per day: a whole year at a glance. */
+function yearlyView(y) {
+  const tk = todayKey();
+  const cards = state.habits.map((h) => {
+    const s = startKey(h);
+    let done = 0;
+    let due = 0;
+    let dueDone = 0;
+    let cells = '';
+    for (let m = 0; m < 12; m++) {
+      const dim = new Date(y, m + 1, 0).getDate();
+      for (let i = 1; i <= 31; i++) {
+        if (i > dim) { cells += '<i class="x"></i>'; continue; }
+        const d = new Date(y, m, i);
+        const k = keyOf(d);
+        const cls = dayClass(h, d, s, tk);
+        if (cls === 'done') done++;
+        if (k <= tk && isDue(h, d, s) && (cls === 'done' || k !== tk)) {
+          due++;
+          if (cls === 'done') dueDone++;
+        }
+        cells += `<i class="${cls}"></i>`;
+      }
+    }
+    const share = due ? pct(dueDone / due) : '–';
+    return `
+      <button class="ycard" data-action="open" data-id="${esc(h.id)}" style="${habitVars(h)}" aria-label="${esc(`${h.name}: done on ${plural(done, 'day')} in ${y}. Open details.`)}">
+        <span class="yc-head"><span class="yc-name"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</span><span class="yc-stat">${plural(done, 'day')} · ${share}</span></span>
+        <span class="ygrid" aria-hidden="true">${cells}</span>
+      </button>`;
+  }).join('');
+  return `<div class="years">${cards}</div>`;
+}
+
+/* Me: this week, settings and backups */
+
+function renderMe() {
   const t = state.settings.theme;
   const ws = state.settings.weekStart;
   const installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const seg = (action, value, label, on) => `<button data-action="${action}" data-value="${value}" aria-pressed="${on}">${label}</button>`;
 
+  const tk = todayKey();
+  const start = startOfWeek(parseKey(tk));
+  const spoken = [];
+  const week = ALL_DAYS.map((i) => {
+    const d = addDays(start, i);
+    const k = keyOf(d);
+    const p = k > tk ? null : dayProgress(d);
+    spoken.push(`${fmt(d, { weekday: 'long' })} ${p === null ? 'nothing yet' : pct(p)}`);
+    return `
+      <div class="wd${k === tk ? ' now' : ''}">
+        <span>${esc(fmt(d, { weekday: 'narrow' }))}</span>
+        <span class="wd-ring" style="--p:${(p || 0).toFixed(3)}"><b>${d.getDate()}</b></span>
+      </div>`;
+  }).join('');
+
   return `
-    <header class="page-head"><div><h1>Settings</h1><p class="muted">Make it yours</p></div></header>
+    <header class="me-head">
+      <span class="avatar" aria-hidden="true"><img src="icons/icon.svg" alt=""></span>
+      <div><h1>Habit For Me</h1><p class="muted">Your habits stay on this device</p></div>
+    </header>
 
-    <h2 class="section-title">Look</h2>
-    <section class="group">
-      <div class="row"><span>Appearance</span>
-        <div class="seg" role="group" aria-label="Appearance">
-          ${seg('theme', 'system', 'Auto', t === 'system')}${seg('theme', 'light', 'Light', t === 'light')}${seg('theme', 'dark', 'Dark', t === 'dark')}
+    <div class="me-grid">
+      <section class="panel wide">
+        <div class="panel-title">This week</div>
+        <div class="week-rings" role="img" aria-label="${esc(`This week: ${spoken.join(', ')}`)}">${week}</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Settings</div>
+        <div class="row"><span>Appearance</span>
+          <div class="seg" role="group" aria-label="Appearance">
+            ${seg('theme', 'system', 'Auto', t === 'system')}${seg('theme', 'light', 'Light', t === 'light')}${seg('theme', 'dark', 'Dark', t === 'dark')}
+          </div>
         </div>
-      </div>
-      <div class="row"><span>Week starts on</span>
-        <div class="seg" role="group" aria-label="Week starts on">
-          ${seg('week-start', 1, 'Monday', ws === 1)}${seg('week-start', 0, 'Sunday', ws === 0)}
+        <div class="row"><span>Week starts on</span>
+          <div class="seg" role="group" aria-label="Week starts on">
+            ${seg('week-start', 1, 'Mon', ws === 1)}${seg('week-start', 0, 'Sun', ws === 0)}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <h2 class="section-title">Put it on your phone</h2>
-    <section class="group help">
-      ${installed ? '<p><strong>✓ Installed.</strong> You are using Habit For Me as an app.</p>' : `
-        <p><strong>iPhone / iPad:</strong> open this page in Safari, tap the Share button, then <em>Add to Home Screen</em>.</p>
-        <p><strong>Android:</strong> open it in Chrome, tap the ⋮ menu, then <em>Install app</em> or <em>Add to Home screen</em>.</p>
-        <p>It then opens like a normal app and works without internet.</p>`}
-    </section>
+      <section class="panel">
+        <div class="panel-title">Your data</div>
+        <p class="help">Your habits are saved only on this device. Make a backup to keep them safe or move them to another phone.</p>
+        <button class="row" data-action="export"><span>Download a backup</span><span class="muted">.json</span></button>
+        <button class="row" data-action="import"><span>Restore from a backup</span><span class="muted">Replaces data</span></button>
+        <button class="row danger${ui.confirm === 'reset' ? ' armed' : ''}" data-action="reset">
+          <span>${ui.confirm === 'reset' ? 'Tap again to delete everything' : 'Delete all data'}</span>
+        </button>
+      </section>
 
-    <h2 class="section-title">Your data</h2>
-    <section class="group">
-      <p class="help">Your habits are saved only on this device. Make a backup to keep them safe or move them to another phone.</p>
-      <button class="row" data-action="export"><span>Download a backup</span><span class="muted">.json</span></button>
-      <button class="row" data-action="import"><span>Restore from a backup</span><span class="muted">Replaces data</span></button>
-      <button class="row danger${ui.confirm === 'reset' ? ' armed' : ''}" data-action="reset">
-        <span>${ui.confirm === 'reset' ? 'Tap again to delete everything' : 'Delete all data'}</span>
-      </button>
-    </section>
+      <section class="panel help-panel">
+        <div class="panel-title">Put it on your phone</div>
+        <div class="help">
+          ${installed ? '<p><strong>✓ Installed.</strong> You are using Habit For Me as an app.</p>' : `
+            <p><strong>iPhone / iPad:</strong> open this page in Safari, tap the Share button, then <em>Add to Home Screen</em>.</p>
+            <p><strong>Android:</strong> open it in Chrome, tap the ⋮ menu, then <em>Install app</em> or <em>Add to Home screen</em>.</p>
+            <p><strong>Mac:</strong> in Safari choose <em>File → Add to Dock</em>. In Chrome, click the install icon in the address bar.</p>`}
+        </div>
+      </section>
+    </div>
 
-    <p class="muted small center about">Habit For Me · version 1.0</p>`;
+    <p class="muted small center about">Habit For Me · version 2.0</p>`;
 }
 
 /* ---------- 6. Add / edit sheet ---------- */
@@ -628,28 +789,32 @@ function openSheet(h, preset) {
       <div class="grabber" aria-hidden="true"></div>
       <form id="habit-form" novalidate>
         <div class="sheet-head">
-          <button type="button" class="text-btn" data-action="close-sheet">Cancel</button>
+          <button type="button" class="x-btn" data-action="close-sheet" aria-label="Close">${ICON_SVG.close}</button>
           <h2 id="sheet-title">${h ? 'Edit habit' : 'New habit'}</h2>
-          <button type="submit" class="text-btn strong">Save</button>
+          <span aria-hidden="true"></span>
         </div>
 
-        <label class="field"><span>Name</span>
-          <input type="text" name="name" maxlength="60" placeholder="e.g. Drink water" value="${esc(v.name)}" autocomplete="off" required>
-        </label>
+        <div class="fgroup name-row" style="--c:${v.color}">
+          <span class="preview" aria-hidden="true">${esc(v.icon)}</span>
+          <label class="name-field"><span class="flabel">Name</span>
+            <input type="text" name="name" maxlength="60" placeholder="e.g. Drink water" value="${esc(v.name)}" autocomplete="off" required>
+          </label>
+        </div>
 
-        <fieldset><legend>Icon</legend>
+        <fieldset class="fgroup"><legend class="flabel">Icon</legend>
           <div class="icon-grid">
             ${icons.map((ic) => `<label class="opt icon-opt"><input type="radio" name="icon" value="${esc(ic)}" ${ic === v.icon ? 'checked' : ''} aria-label="${esc(ic)}"><span>${esc(ic)}</span></label>`).join('')}
           </div>
         </fieldset>
 
-        <fieldset><legend>Colour</legend>
+        <fieldset class="fgroup"><legend class="flabel">Colour</legend>
           <div class="color-row">
             ${colors.map((c, i) => `<label class="opt color-opt" style="--c:${c}"><input type="radio" name="color" value="${c}" ${c === v.color ? 'checked' : ''} aria-label="Colour ${i + 1}"><span></span></label>`).join('')}
           </div>
         </fieldset>
 
-        <div class="field"><span id="goal-label">Times per day</span>
+        <div class="fgroup frow">
+          <span class="flabel" id="goal-label">Times per day</span>
           <div class="stepper" role="group" aria-labelledby="goal-label">
             <button type="button" data-action="step" data-delta="-1" aria-label="One fewer">−</button>
             <output aria-live="polite">${v.goal}</output>
@@ -659,14 +824,14 @@ function openSheet(h, preset) {
         </div>
         <p class="hint">Use more than 1 for things like “8 glasses of water”.</p>
 
-        <fieldset><legend>Repeat on</legend>
+        <fieldset class="fgroup"><legend class="flabel">Repeat on</legend>
           <div class="presets">
             <button type="button" class="chip" data-action="preset" data-days="0,1,2,3,4,5,6">Every day</button>
             <button type="button" class="chip" data-action="preset" data-days="1,2,3,4,5">Weekdays</button>
             <button type="button" class="chip" data-action="preset" data-days="0,6">Weekends</button>
           </div>
           <div class="day-chips">
-            ${weekOrder().map((d) => `<label class="opt day-opt"><input type="checkbox" name="days" value="${d}" ${v.days.includes(d) ? 'checked' : ''} aria-label="${esc(dayName(d, 'long'))}"><span>${esc(dayName(d))}</span></label>`).join('')}
+            ${weekOrder().map((d) => `<label class="opt day-opt"><input type="checkbox" name="days" value="${d}" ${v.days.includes(d) ? 'checked' : ''} aria-label="${esc(dayName(d, 'long'))}"><span>${esc(dayName(d).slice(0, 2))}</span></label>`).join('')}
           </div>
         </fieldset>
 
@@ -678,6 +843,14 @@ function openSheet(h, preset) {
   sheet.showModal();
   if (!h && !preset) sheet.querySelector('input[name="name"]').focus();
 }
+
+// Show the chosen icon and colour in the preview next to the name.
+sheet.addEventListener('change', (e) => {
+  const form = e.target.form;
+  if (!form) return;
+  if (e.target.name === 'icon') form.querySelector('.preview').textContent = e.target.value;
+  if (e.target.name === 'color') form.querySelector('.name-row').style.setProperty('--c', e.target.value);
+});
 
 sheet.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -782,7 +955,6 @@ document.addEventListener('click', (e) => {
     case 'tab':
       ui.tab = el.dataset.tab;
       ui.detail = null;
-      ui.peek = null;
       render();
       window.scrollTo(0, 0);
       break;
@@ -828,12 +1000,9 @@ document.addEventListener('click', (e) => {
       ui.date = el.dataset.key;
       render();
       break;
-    case 'week': {
-      const next = keyOf(addDays(parseKey(ui.date), Number(el.dataset.delta)));
-      ui.date = next > todayKey() ? todayKey() : next;
-      render();
+    case 'future-day':
+      toast("You can't check off a future day");
       break;
-    }
     case 'go-today':
       ui.date = todayKey();
       render();
@@ -852,10 +1021,23 @@ document.addEventListener('click', (e) => {
       render();
       break;
     }
-    case 'peek':
-      ui.peek = { chart: el.dataset.chart, key: el.dataset.key };
+    case 'range':
+      ui.range = el.dataset.range;
+      ui.anchor = todayKey();
       render();
       break;
+    case 'period': {
+      const a = parseKey(ui.anchor);
+      const n = Number(el.dataset.delta);
+      let d;
+      if (ui.range === 'month') d = new Date(a.getFullYear(), a.getMonth() + n, 1);
+      else if (ui.range === 'year') d = new Date(a.getFullYear() + n, 0, 1);
+      else d = addDays(a, 7 * n);
+      const k = keyOf(d);
+      ui.anchor = k > todayKey() ? todayKey() : k;
+      render();
+      break;
+    }
     case 'theme':
       state.settings.theme = el.dataset.value;
       save();
@@ -878,7 +1060,7 @@ document.addEventListener('click', (e) => {
         state = defaultState();
         save();
         applyTheme();
-        Object.assign(ui, { confirm: null, tab: 'today', date: todayKey(), detail: null, peek: null });
+        Object.assign(ui, { confirm: null, tab: 'today', date: todayKey(), anchor: todayKey(), detail: null });
         render();
         toast('All data deleted');
       } else {
@@ -930,6 +1112,7 @@ function checkDayChange() {
   const t = todayKey();
   if (t === lastToday) return;
   if (ui.date === lastToday) ui.date = t;
+  if (ui.anchor === lastToday) ui.anchor = t;
   lastToday = t;
   render();
 }

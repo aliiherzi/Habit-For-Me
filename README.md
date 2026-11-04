@@ -3,26 +3,35 @@
 A simple, free habit tracker that works on **iPhone, Android, Mac and PC**.
 Check off your habits every day, build streaks, and see your progress.
 
-> Status: **version 1 works.** No account, no ads. Your data stays on your device.
+> Status: **version 2 works**, with a new look. No account, no ads. Your data stays on your device.
 
 ## Features
 
 - [x] Add habits with an icon, a colour and the days they repeat on
 - [x] Habits you do several times a day (e.g. "8 glasses of water")
-- [x] Check off habits each day, and go back to fill in earlier days
+- [x] Today screen: a row of dates to jump to any recent day, and habit bars that fill up with colour as you go
 - [x] Streaks: current streak and best streak for every habit
-- [x] A calendar for each habit; tap a day to mark it done or not done
-- [x] Progress screen: last 7 days, a 12-week heatmap, and a 30-day score per habit
+- [x] All habits list, and a details page with a calendar for each habit (tap a day to mark it done or not done)
+- [x] Stats: Weekly, Monthly and Yearly reports, with "perfect" badges and totals
+- [x] Me page: this week at a glance, settings, and backups
+- [x] Fits every screen: phones, tablets and iPads, and laptops
 - [x] Light and dark mode
 - [x] Works offline and installs on your phone's home screen like an app
 - [x] Backup and restore (download your data as a file, load it on another device)
 
+## Look and feel
+
+The design follows the **Habit Tracker** app the owner likes: a pink accent colour, a row of dates
+at the top, coloured habit bars, a floating menu at the bottom, and Weekly / Monthly / Yearly reports.
+Habit For Me keeps its own name, icon and artwork.
+
 ## Ideas for later
 
 - Reminders / notifications
+- A mood and a short note for each day
+- Habit groups (e.g. Morning, Evening)
 - Reorder habits by dragging
 - Archive a habit instead of deleting it
-- Notes for each day
 - Sync between devices (needs accounts and a server)
 - A native App Store / Google Play app (Apple charges $99 a year for a developer account)
 
@@ -57,8 +66,8 @@ Plain **HTML, CSS and JavaScript**. There are no frameworks and nothing to insta
 
 | File | What it does |
 |------|--------------|
-| `index.html` | The page itself: loads everything and holds the tab bar |
-| `styles.css` | All the colours and layout, including dark mode |
+| `index.html` | The page itself: loads everything and holds the floating menu |
+| `styles.css` | All the colours and layout, including dark mode and bigger screens |
 | `app.js` | The app: screens, streak maths, saving data |
 | `sw.js` | Service worker that makes the app work offline |
 | `manifest.webmanifest` | App name and icons, so phones can install it |

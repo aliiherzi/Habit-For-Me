@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Habit For Me</title>
   <meta name="description" content="A simple habit tracker. Check off habits every day and watch your streaks grow.">
-  <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#111213" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f6f6f9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121216" media="(prefers-color-scheme: dark)">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -21,17 +21,17 @@
 
   <nav class="tabbar" aria-label="Main">
     <div class="tabbar-inner">
-      <button class="tab" data-action="tab" data-tab="today">
+      <button class="tab" data-action="tab" data-tab="today" aria-label="Today" title="Today">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8 5.7-5.8"/></svg>
-        <span>Today</span>
       </button>
-      <button class="tab" data-action="tab" data-tab="stats">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-8M12 20V5M19 20v-5"/></svg>
-        <span>Progress</span>
+      <button class="tab" data-action="tab" data-tab="habits" aria-label="All habits" title="All habits">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" stroke-width="3"/></svg>
       </button>
-      <button class="tab" data-action="tab" data-tab="settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
-        <span>Settings</span>
+      <button class="tab" data-action="tab" data-tab="stats" aria-label="Stats" title="Stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/></svg>
+      </button>
+      <button class="tab" data-action="tab" data-tab="me" aria-label="Me and settings" title="Me and settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.6 4.2-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>
       </button>
     </div>
   </nav>
