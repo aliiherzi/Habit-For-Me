@@ -317,6 +317,9 @@ main {
 .hc-btn svg { width: 18px; height: 18px; }
 .hc.done .hc-btn { background: none; }
 .hc-btn .seal { width: 32px; height: 32px; }
+.hc.quit .hc-btn { background: #000; color: #fff; }
+.hc.over .hc-count { background: #ff453a; color: #fff; }
+.hc.running .hc-btn { background: var(--c); color: var(--ink); }
 
 .rest-note { margin-top: 16px; text-align: center; font-size: 13px; color: var(--muted); }
 .empty-note { padding: 36px 12px; text-align: center; color: var(--muted); }
@@ -367,7 +370,7 @@ main {
   backdrop-filter: blur(16px);
   pointer-events: auto;
 }
-.tab { width: 62px; height: 52px; border-radius: 26px; display: grid; place-items: center; color: var(--text); }
+.tab { width: min(62px, calc((100vw - 64px) / 5)); height: 52px; border-radius: 26px; display: grid; place-items: center; color: var(--text); }
 .tab svg { width: 24px; height: 24px; }
 .tab.active { background: var(--tab-sel); color: var(--accent); }
 .tab .ic-add { display: none; }
@@ -510,6 +513,18 @@ main {
   transform: translateY(-50%);
 }
 .ring-minus svg { width: 22px; height: 22px; }
+.big-ring .prog.over { stroke: #ff453a; }
+.cnt-desc.rule { font-size: 13px; }
+.cnt-desc.over { color: #ff453a; font-weight: 600; }
+.done-btn.ghost { visibility: hidden; }
+.big-ring .knob { fill: #fff; stroke: none; }
+.clock { font-size: clamp(40px, 13vw, 52px); font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.clock-sub { margin-top: 8px; font-size: 14px; }
+.add-pill.play { display: grid; place-items: center; }
+.add-pill.play svg { width: 24px; height: 24px; }
+.fi.style { background: color-mix(in srgb, #3d8bff 24%, var(--mix)); color: #3d8bff; }
+.fi.sound { background: color-mix(in srgb, #a970ff 24%, var(--mix)); color: #a970ff; }
+.fi.watch { background: color-mix(in srgb, #3ccf7a 24%, var(--mix)); color: #3ccf7a; }
 .cnt-desc { margin-top: 8px; text-align: center; font-size: 15px; color: var(--muted); }
 .cnt-actions { display: grid; grid-template-columns: 42px auto 42px; align-items: center; gap: 22px; margin-top: auto; padding-top: 28px; }
 .reset-btn { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: var(--c); }
@@ -809,6 +824,7 @@ input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
 .time-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; }
 .tchip span { padding: 6px 12px; border-radius: 14px; font-size: 13px; background: var(--card-2); color: var(--muted); }
 .tchip input:checked + span { background: var(--accent); color: var(--accent-ink); }
+.type-chips { padding-top: 0; }
 .switch { position: relative; flex: none; width: 51px; height: 31px; }
 .switch input { position: absolute; inset: 0; z-index: 1; margin: 0; opacity: 0; cursor: pointer; }
 .switch span { position: absolute; inset: 0; border-radius: 16px; background: var(--card-2); transition: background 0.2s; }
@@ -947,6 +963,80 @@ textarea {
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* ---------- New Habit page (ready-made habits) ---------- */
+
+.tpl { display: flex; flex-direction: column; }
+.tpl-list { list-style: none; margin: 0; padding: 0 0 76px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.share-pick .tpl-list { padding-bottom: 8px; }
+.tpl-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 10px 16px; border-radius: 16px; background: var(--card); text-align: left; }
+.tpl-emoji { flex: none; width: 26px; font-size: 20px; text-align: center; }
+.tpl-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tpl-goal { flex: none; max-width: 42%; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tpl-add { flex: none; display: grid; place-items: center; }
+.tpl-add svg { width: 18px; height: 18px; }
+.custom-btn {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  align-self: center;
+  margin-top: -60px;
+  padding: 12px 30px;
+  border-radius: 24px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Timer sounds ---------- */
+
+.sound-sheet .seg { display: flex; margin-bottom: 14px; }
+.sound-sheet .seg button { flex: 1; padding: 8px 10px; font-size: 14px; }
+.sound-sheet .u-row.on { color: var(--accent); font-weight: 600; }
+.sound-sheet .u-row.on svg { width: 18px; height: 18px; color: var(--accent); }
+.sound-sheet .f-hint { margin-top: 12px; }
+
+/* ---------- Group: habits with friends ---------- */
+
+.group-empty { padding-top: 10vh; }
+.group-empty p { max-width: 300px; margin: 0 auto; line-height: 1.5; }
+.group-art { width: 168px; height: 168px; margin: 0 auto 22px; border-radius: 50%; display: grid; place-items: center; font-size: 76px; background: color-mix(in srgb, var(--accent) 22%, var(--mix)); }
+.group-art.small { width: 110px; height: 110px; margin: 6px auto 14px; font-size: 50px; }
+.glist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.gcard { border-radius: 18px; background: var(--card); overflow: hidden; }
+.g-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 14px 10px; text-align: left; }
+.g-head > svg { flex: none; width: 16px; height: 16px; margin-left: auto; color: var(--faint); }
+.g-title { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.g-title b { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-title small { font-size: 12px; color: var(--muted); }
+.g-people { list-style: none; margin: 0; padding: 0 14px; }
+.g-person { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.g-avatar { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 700; background: color-mix(in srgb, var(--c) 30%, var(--mix)); }
+.g-avatar.me { font-size: 18px; }
+.g-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.g-who b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-who b small { font-weight: 400; color: var(--muted); }
+.g-who > small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-week { flex: none; display: flex; gap: 3px; }
+.g-week i { width: 9px; height: 9px; border-radius: 50%; background: var(--card-2); }
+.g-week i.y { background: var(--c); }
+.g-week i.n { background: color-mix(in srgb, #ff453a 60%, var(--mix)); }
+.g-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px 14px; }
+.g-actions .pchip { display: inline-flex; align-items: center; gap: 6px; }
+.g-actions .pchip svg { width: 15px; height: 15px; }
+.group-note { margin: 16px 8px 0; text-align: center; font-size: 13px; color: var(--muted); }
+.ga-title { margin-bottom: 16px; text-align: center; font-weight: 600; }
+.ga-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(100%, 340px); height: 46px; margin: 0 auto 12px; border-radius: 23px; color: #fff; font-weight: 600; }
+.ga-btn svg { width: 20px; height: 20px; }
+.ga-btn.pink { background: #fd6c84; }
+.ga-btn.orange { background: #ff9f4a; }
+.share-card { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 14px; padding: 18px; border-radius: 18px; background: color-mix(in srgb, var(--c) 22%, var(--mix)); text-align: center; }
+.share-card .hc-icon { width: 52px; height: 52px; border-radius: 14px; font-size: 28px; }
+.share-card b { font-size: 18px; }
+.share-card small { font-size: 13px; color: var(--muted); }
+.join-text { margin: 0 4px 16px; text-align: center; line-height: 1.5; }
+.link-in { width: 100%; margin-top: 8px; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--card-2); font-size: 14px; }
 
 /* ---------- Celebration when everything for today is done ---------- */
 

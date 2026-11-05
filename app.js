@@ -44,6 +44,50 @@ const SUGGESTIONS = [
   { name: 'Meditate', icon: '🧘', color: '#f05cc8', goal: 1 },
   { name: 'Sleep by 11pm', icon: '😴', color: '#3ccf7a', goal: 1 },
 ];
+// The New Habit page: ready-made habits in tabs. Each is [emoji, name, goal, unit, more], where more can
+// hold type: 'quit' (stay at or under the goal each day) and days (0 = Sunday ... 6 = Saturday).
+const TEMPLATE_TABS = [
+  ['Popular', '🔥', [
+    ['🚶', 'Walk', 30, 'min'], ['😴', 'Sleep', 8, 'hr'], ['💧', 'Drink water', 8, 'glasses'], ['🧘', 'Meditation', 10, 'min'],
+    ['🏃', 'Run', 20, 'min'], ['🚴', 'Cycling', 30, 'min'], ['💪', 'Workout', 45, 'min'], ['🔥', 'Burn calories', 400, 'kcal'],
+    ['📖', 'Read a book', 20, 'pages'], ['🕌', 'Pray on time', 5, 'prayers'], ['📗', 'Read Quran', 5, 'pages'],
+    ['📱', 'Less social media', 1, 'hr', { type: 'quit' }]]],
+  ['Faith', '🕌', [
+    ['🕌', 'Pray on time', 5, 'prayers'], ['🌅', 'Fajr on time', 1, ''], ['🕋', 'Pray at the mosque', 5, 'prayers'],
+    ['📗', 'Read Quran', 5, 'pages'], ['🧠', 'Memorize Quran', 5, 'ayahs'], ['☀️', 'Morning adhkar', 1, ''],
+    ['🌙', 'Evening adhkar', 1, ''], ['📿', 'Istighfar', 100, 'times'], ['📿', 'Salawat', 100, 'times'], ['📿', 'Dhikr', 33, 'times'],
+    ['🤲', 'Dua', 1, ''], ['💰', 'Sadaqah', 1, ''], ['🍽️', 'Fast Monday and Thursday', 1, '', { days: [1, 4] }],
+    ['🌌', 'Tahajjud', 2, 'rakats'], ['🌤️', 'Duha prayer', 2, 'rakats'], ['🎧', 'Islamic lesson', 20, 'min']]],
+  ['Health', '❤️', [
+    ['💧', 'Drink water', 8, 'glasses'], ['😴', 'Sleep', 8, 'hr'], ['🍎', 'Eat fruit', 2, 'pieces'], ['🥦', 'Eat vegetables', 3, 'servings'],
+    ['💊', 'Take medicine', 1, ''], ['💊', 'Take vitamins', 1, ''], ['🦷', 'Brush teeth', 2, 'times'], ['🧴', 'Skincare', 1, ''],
+    ['🌞', 'Time in daylight', 20, 'min'], ['🫁', 'Breathe', 5, 'min'], ['🛏️', 'Sleep early', 1, ''], ['⚖️', 'Check weight', 1, '']]],
+  ['Sports', '🏃', [
+    ['🚶', 'Walk', 30, 'min'], ['🏃', 'Run', 20, 'min'], ['🤸', 'Stretch', 10, 'min'], ['🧘', 'Yoga', 20, 'min'],
+    ['🚴', 'Cycling', 30, 'min'], ['🏊', 'Swim', 30, 'min'], ['🔥', 'Burn calories', 400, 'kcal'], ['🏋️', 'Exercise', 30, 'min'],
+    ['💪', 'Workout', 45, 'min'], ['🏋️', 'Gym', 1, ''], ['🤜', 'Push-ups', 30, 'reps'], ['🦵', 'Squats', 30, 'reps'],
+    ['⚽', 'Football', 60, 'min'], ['🪢', 'Jump rope', 10, 'min']]],
+  ['Lifestyle', '🏠', [
+    ['💵', 'Track expenses', 1, ''], ['💰', 'Save money', 5, '$'], ['🫁', 'Breathe', 5, 'min'], ['🧘', 'Meditation', 10, 'min'],
+    ['📖', 'Read a book', 20, 'pages'], ['🎓', 'Learning', 30, 'min'], ['📝', 'Review today', 1, ''], ['💡', 'Mind clearing', 10, 'min'],
+    ['💧', 'Drink water', 8, 'glasses'], ['🍎', 'Eat fruit', 2, 'pieces'], ['🛏️', 'Make the bed', 1, ''], ['🧹', 'Tidy up', 15, 'min'],
+    ['📞', 'Call family', 1, ''], ['🙏', 'Gratitude', 3, 'things'], ['🌱', 'Water the plants', 1, '']]],
+  ['Time', '⏱️', [
+    ['🤸', 'Stretch', 10, 'min'], ['🧘', 'Yoga', 20, 'min'], ['🏊', 'Swim', 30, 'min'], ['🏋️', 'Exercise', 30, 'min'],
+    ['💪', 'Strength training', 20, 'min'], ['🧘', 'Meditation', 10, 'min'], ['🫁', 'Breathe', 5, 'min'], ['📖', 'Read a book', 30, 'min'],
+    ['🎓', 'Learning', 1, 'hr'], ['📝', 'Review today', 10, 'min'], ['💡', 'Mind clearing', 10, 'min'], ['🎯', 'Deep work', 2, 'hr'],
+    ['📗', 'Quran', 20, 'min']]],
+  ['Quit', '🚫', [
+    ['🍞', 'Less carbohydrate', 150, 'g'], ['🍬', 'Eat less sugar', 25, 'g'], ['☕', 'Drink less caffeine', 2, 'cups'],
+    ['🥤', 'Drink less soda', 1, 'cans'], ['🚭', 'Smoke less', 5, 'cigarettes'], ['🎮', 'Play less games', 1, 'hr'],
+    ['😤', 'Complain less', 0, 'times'], ['🪑', 'Sit less', 8, 'hr'], ['📺', 'Watch less TV', 1, 'hr'],
+    ['📱', 'Less social media', 1, 'hr'], ['📵', 'Less phone time', 3, 'hr'], ['🍔', 'Less junk food', 1, 'meals'],
+    ['💸', 'Spend less', 10, '$']].map((t) => [...t, { type: 'quit' }])],
+];
+// Sounds for the timer, made in the app (no sound files): [id, label, emoji].
+const FOCUS_SOUNDS = [['silent', 'Silent', '🔇'], ['tick', 'Tick', '🕐'], ['rain', 'Rain', '🌧️'], ['waves', 'Waves', '🌊'],
+  ['fire', 'Fire', '🔥'], ['noise', 'Soft noise', '🌫️']];
+const END_SOUNDS = [['bell', 'Bell', '🔔'], ['chime', 'Chime', '🎵'], ['silent', 'Silent', '🔇']];
 const MOODS = [
   { emoji: '😞', label: 'Awful' },
   { emoji: '🙁', label: 'Bad' },
@@ -193,6 +237,15 @@ const ICON_SVG = {
   down: svg('<path d="M7 10l5 5 5-5"/>', 2.2),
   plus: svg('<path d="M12 5v14M5 12h14"/>', 2.4),
   minus: svg('<path d="M5 12h14"/>', 2.4),
+  play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.6v12.8a.8.8 0 0 0 1.2.7l10.3-6.4a.8.8 0 0 0 0-1.4L9.2 4.9A.8.8 0 0 0 8 5.6z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg>',
+  clock: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+  note: svg('<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>'),
+  watch: svg('<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V10M9.5 3h5M12 3v3"/>'),
+  people: svg('<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 5.2a3.5 3.5 0 0 1 0 6.6M18.5 14.8c1.7.8 2.7 2.5 3 5.2"/>'),
+  share: svg('<path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5"/>'),
+  bell: svg('<path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'),
+  link: svg('<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>'),
   undo: svg('<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/>', 2.2),
   warn: svg('<path d="M12 4.2 2.9 19.5h18.2z"/><path d="M12 10v4M12 16.9h.01"/>', 2),
   close: svg('<path d="M6 6l12 12M18 6L6 18"/>', 2.2),
@@ -272,7 +325,7 @@ function defaultState() {
     log: {},
     memos: {},
     journal: {},
-    settings: { theme: 'dark', weekStart: 6, name: '', avatar: '🙂', sound: true, celebrate: true }, // weekStart 6 = Saturday
+    settings: { theme: 'dark', weekStart: 6, name: '', avatar: '🙂', sound: true, celebrate: true, focusSound: 'tick', endSound: 'bell' }, // weekStart 6 = Saturday
   };
 }
 
@@ -282,6 +335,18 @@ function clampInt(v, min, max, fallback) {
 }
 
 const cleanText = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+/** A friend's last progress for a shared habit: { name: { day, week: "1101-01", streak, at } }. */
+function cleanFriendStats(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [name, v] of Object.entries(raw).slice(0, 20)) {
+    if (v && isKey(v.day) && /^[01?-]{7}$/.test(v.week)) {
+      out[cleanText(name, 30)] = { day: v.day, week: v.week, streak: clampInt(v.streak, 0, 99999, 0), at: Number(v.at) || 0 };
+    }
+  }
+  return out;
+}
 
 /** Cleans up saved or imported data so the app never breaks on bad input. Older backups still load. */
 function normalize(raw) {
@@ -302,7 +367,8 @@ function normalize(raw) {
           desc: cleanText(h.desc, 40), // short line under the name, e.g. "Gym"
           icon: typeof h.icon === 'string' && h.icon ? h.icon.slice(0, 8) : '✅',
           color: /^#[0-9a-f]{6}$/i.test(h.color) ? h.color.toLowerCase() : NEW_COLORS[0],
-          goal: clampInt(h.goal, 1, MAX_COUNT, 1),
+          type: h.type === 'quit' ? 'quit' : 'build', // quit: stay at or under the goal each day
+          goal: clampInt(h.goal, h.type === 'quit' ? 0 : 1, MAX_COUNT, 1),
           unit: cleanText(h.unit, 12), // e.g. "glasses"; empty means "times"
           days: days.length ? days : ALL_DAYS.slice(),
           time: TIMES.some(([t]) => t === h.time) ? h.time : 'any',
@@ -311,6 +377,10 @@ function normalize(raw) {
           memo: h.memo === true, // ask for a memo after finishing
           archived: h.archived === true,
           createdAt: isKey(h.createdAt) ? h.createdAt : todayKey(),
+          // Shared with friends (Group tab): the link id, friends' names and the progress they last sent.
+          shareId: cleanText(h.shareId, 40),
+          friends: Array.isArray(h.friends) ? [...new Set(h.friends.map((f) => cleanText(f, 30)).filter(Boolean))].slice(0, 20) : [],
+          friendStats: cleanFriendStats(h.friendStats),
         };
       });
   }
@@ -321,7 +391,8 @@ function normalize(raw) {
       if (!src || typeof src !== 'object') continue;
       const clean = {};
       for (const [k, v] of Object.entries(src)) {
-        const n = clampInt(v, 0, MAX_COUNT, 0);
+        // Timed habits can hold parts of a minute or an hour, so keep 4 decimals.
+        const n = Math.min(MAX_COUNT, Math.max(0, Math.round(Number(v) * 10000) / 10000));
         if (isKey(k) && n > 0) clean[k] = n;
       }
       s.log[h.id] = clean;
@@ -365,6 +436,8 @@ function normalize(raw) {
   if (typeof st.avatar === 'string' && st.avatar.trim()) s.settings.avatar = st.avatar.trim().slice(0, 8);
   if (st.sound === false) s.settings.sound = false;
   if (st.celebrate === false) s.settings.celebrate = false;
+  if (FOCUS_SOUNDS.some(([id]) => id === st.focusSound)) s.settings.focusSound = st.focusSound;
+  if (END_SOUNDS.some(([id]) => id === st.endSound)) s.settings.endSound = st.endSound;
   return s;
 }
 
@@ -408,12 +481,17 @@ const ui = {
   menu: null, // which small menu is open: filter, pick or habit
   confirm: null, // which delete button is waiting for a second tap
   editing: null, // id of the habit open in the edit sheet
+  tplTab: 0, // New Habit page: which tab of ready-made habits
+  countView: false, // a timed habit's page shows the counter instead of the timer
+  countUp: false, // the timer counts up (time done) instead of down (time left)
 };
 
 /* ---------- 4. Habit maths ---------- */
 
 const countOf = (h, k) => (state.log[h.id] && state.log[h.id][k]) || 0;
-const isDone = (h, k) => countOf(h, k) >= h.goal;
+const isDone = (h, k) => (h.type === 'quit' ? countOf(h, k) <= h.goal : countOf(h, k) >= h.goal);
+/** How much of one day's goal is done, 0..1. A quit habit counts as 1 while it stays at or under its limit. */
+const dayShare = (h, k) => (h.type === 'quit' ? Number(countOf(h, k) <= h.goal) : Math.min(countOf(h, k) / h.goal, 1));
 const findHabit = (id) => state.habits.find((h) => h.id === id) || null;
 const active = () => state.habits.filter((h) => !h.archived);
 const entryOf = (k) => state.journal[k] || {};
@@ -463,7 +541,8 @@ function setCount(h, k, n) {
 function currentStreak(h) {
   const start = startKey(h);
   let d = new Date();
-  if (h.days.includes(d.getDay()) && !isDone(h, keyOf(d))) d = addDays(d, -1);
+  // A quit habit that went over its limit today has already lost today, so it breaks the streak now.
+  if (h.days.includes(d.getDay()) && !isDone(h, keyOf(d)) && h.type !== 'quit') d = addDays(d, -1);
   let n = 0;
   for (let i = 0; i < 3660; i++, d = addDays(d, -1)) {
     const k = keyOf(d);
@@ -488,15 +567,23 @@ function bestStreak(h) {
   return best;
 }
 
-const totalDone = (h) => Object.keys(state.log[h.id] || {}).filter((k) => isDone(h, k)).length;
+function totalDone(h) {
+  if (h.type !== 'quit') return Object.keys(state.log[h.id] || {}).filter((k) => isDone(h, k)).length;
+  // A quit habit succeeds on every scheduled day it stayed under the limit, logged or not.
+  const tk = todayKey();
+  const start = startKey(h);
+  let n = 0;
+  for (let d = parseKey(start); keyOf(d) <= tk; d = addDays(d, 1)) if (isDue(h, d, start) && isDone(h, keyOf(d))) n++;
+  return n;
+}
 
 /** 0..1 progress for one day across some habits, or null when nothing was due. */
 function progressOf(list, d) {
   const k = keyOf(d);
   const due = list.filter((h) => isDue(h, d));
-  if (due.length) return due.reduce((sum, h) => sum + Math.min(countOf(h, k) / h.goal, 1), 0) / due.length;
+  if (due.length) return due.reduce((sum, h) => sum + dayShare(h, k), 0) / due.length;
   // One habit done on a day it wasn't scheduled still shows.
-  if (list.length === 1 && countOf(list[0], k)) return Math.min(countOf(list[0], k) / list[0].goal, 1);
+  if (list.length === 1 && countOf(list[0], k)) return dayShare(list[0], k);
   return null;
 }
 const dayProgress = (d) => progressOf(active(), d);
@@ -522,11 +609,11 @@ function periodStats(list, from, to) {
     let dayDue = 0;
     let dayMet = 0;
     for (const h of list) {
-      const c = countOf(h, k);
-      volume += c;
-      const ok = c >= h.goal;
-      if (ok) done++;
-      if (!isDue(h, d, starts.get(h.id))) continue;
+      volume += countOf(h, k);
+      const ok = isDone(h, k);
+      const due_ = isDue(h, d, starts.get(h.id));
+      if (ok && (due_ || h.type !== 'quit')) done++;
+      if (!due_) continue;
       dayDue++;
       if (ok) {
         dayMet++;
@@ -565,6 +652,23 @@ function scheduleText(h) {
 const pct = (p) => `${Math.round(p * 100)}%`;
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const fmtNum = (x) => String(Math.round(x * 100) / 100);
+const isTimeHabit = (h) => h.unit === 'min' || h.unit === 'hr';
+const unitSecs = (h) => (h.unit === 'hr' ? 3600 : 60);
+/** An amount on a card: "1h 30m" or "25m" for habits counted in minutes or hours, else the number. */
+function fmtAmount(h, x) {
+  if (!isTimeHabit(h)) return fmtNum(x);
+  const m = Math.floor(x * (unitSecs(h) / 60) + 1e-6);
+  const hrs = Math.floor(m / 60);
+  if (!m) return '0';
+  return hrs ? `${hrs}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`;
+}
+/** A clock for the timer: 01:05:09, or 05:09 under an hour. */
+function fmtClock(secs) {
+  const t = Math.max(0, Math.floor(secs));
+  const hrs = Math.floor(t / 3600);
+  const rest = `${pad(Math.floor((t % 3600) / 60))}:${pad(t % 60)}`;
+  return hrs ? `${pad(hrs)}:${rest}` : rest;
+}
 
 /* ---------- 5. Screens ---------- */
 
@@ -594,6 +698,7 @@ function render() {
   if (habit) view.innerHTML = ui.stat ? renderHabitStats(habit) : renderCounter(habit);
   else if (ui.tab === 'stats') view.innerHTML = renderStats();
   else if (ui.tab === 'habits') view.innerHTML = renderHabits();
+  else if (ui.tab === 'group') view.innerHTML = renderGroup();
   else if (ui.tab === 'me') view.innerHTML = renderMe();
   else view.innerHTML = renderToday();
 
@@ -749,24 +854,39 @@ function dateStrip() {
 /** One habit as a card tinted with its colour. It fills as you make progress. */
 function habitCard(h, k) {
   const c = countOf(h, k);
-  const done = c >= h.goal;
-  const p = Math.min(c / h.goal, 1);
+  const quit = h.type === 'quit';
+  const done = isDone(h, k);
+  const p = dayShare(h, k);
   const streak = currentStreak(h);
-  const meta = h.desc ? esc(h.desc) : h.reminder ? `⏰ ${esc(fmtTime(h.reminder))}` : '';
-  const label = done
-    ? (h.goal > 1 ? `${h.name}: done. Open it to change the count.` : `${h.name}: done. Tap to undo.`)
-    : h.goal > 1 ? `${h.name}: ${c} of ${h.goal}. Tap to add one.` : `${h.name}: not done. Tap to check it off.`;
+  const running = Boolean(timers[h.id]) && timers[h.id].key === k;
+  const meta = running ? '⏱️ Timer on' : h.desc ? esc(h.desc) : h.reminder ? `⏰ ${esc(fmtTime(h.reminder))}` : '';
+  const amount = `${fmtAmount(h, c)}/${fmtAmount(h, h.goal)}`;
+  let label;
+  let btn;
+  if (isTimeHabit(h)) {
+    label = running ? `${h.name}: timer on. Tap to pause.` : `${h.name}: ${amount}. Tap to start the timer.`;
+    btn = running ? ICON_SVG.pause : done && !quit ? SEAL_SVG : ICON_SVG.play;
+  } else if (quit) {
+    label = `${h.name}: ${c} of at most ${h.goal}${h.unit ? ` ${h.unit}` : ''}. Tap to add one.`;
+    btn = ICON_SVG.close;
+  } else {
+    label = done
+      ? (h.goal > 1 ? `${h.name}: done. Open it to change the count.` : `${h.name}: done. Tap to undo.`)
+      : h.goal > 1 ? `${h.name}: ${c} of ${h.goal}. Tap to add one.` : `${h.name}: not done. Tap to check it off.`;
+    btn = done ? SEAL_SVG : h.goal === 1 ? ICON_SVG.tick : ICON_SVG.plus;
+  }
+  const cls = ['hc', done ? 'done' : '', quit ? 'quit' : '', quit && !done ? 'over' : '', running ? 'running' : ''].filter(Boolean).join(' ');
   return `
-    <li class="hc${done ? ' done' : ''}" style="${habitVars(h)};--p:${p.toFixed(3)}">
+    <li class="${cls}" style="${habitVars(h)};--p:${p.toFixed(3)}">
       ${streak ? `<span class="hc-streak" aria-hidden="true">🔥 ${streak} ${streak === 1 ? 'Day' : 'Days'}</span>` : ''}
-      <button class="hc-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(`${h.name}, ${c} of ${h.goal}${streak ? `, ${plural(streak, 'day')} in a row` : ''}. Open counter.`)}">
+      <button class="hc-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(`${h.name}, ${amount}${streak ? `, ${plural(streak, 'day')} in a row` : ''}. Open.`)}">
         <span class="hc-icon" aria-hidden="true">${esc(h.icon)}</span>
         <span class="hc-body">
           <span class="hc-name">${esc(h.name)}</span>
-          <span class="hc-meta"><span class="hc-count">${c}/${h.goal}</span>${meta ? `<span class="hc-desc">${meta}</span>` : ''}</span>
+          <span class="hc-meta"><span class="hc-count">${amount}</span>${meta ? `<span class="hc-desc">${meta}</span>` : ''}</span>
         </span>
       </button>
-      <button class="hc-btn" data-action="tick" data-id="${esc(h.id)}" aria-pressed="${done}" aria-label="${esc(label)}">${done ? SEAL_SVG : h.goal === 1 ? ICON_SVG.tick : ICON_SVG.plus}</button>
+      <button class="hc-btn" data-action="tick" data-id="${esc(h.id)}"${quit || isTimeHabit(h) ? '' : ` aria-pressed="${done}"`} aria-label="${esc(label)}">${btn}</button>
     </li>`;
 }
 
@@ -775,51 +895,92 @@ function habitCard(h, k) {
 function renderCounter(h) {
   const k = ui.date;
   const c = countOf(h, k);
-  const done = c >= h.goal;
-  const p = Math.min(c / h.goal, 1);
+  const quit = h.type === 'quit';
+  const over = quit && c > h.goal;
+  const done = !quit && c >= h.goal;
+  const p = quit ? (h.goal ? Math.min(c / h.goal, 1) : Number(c > 0)) : Math.min(c / h.goal, 1);
   const R = 116;
   const C = 2 * Math.PI * R;
   const armed = ui.confirm === `delete:${h.id}`;
   const id = `data-id="${esc(h.id)}"`;
   const menu = ui.menu === 'habit' ? popover([
+    { action: 'share-habit', attrs: id, label: 'Build with a friend' },
     { action: 'edit', attrs: id, label: 'Edit' },
     ...(h.reminder ? [{ action: 'ics', attrs: id, label: 'Add reminder to calendar' }] : []),
     { action: 'archive', attrs: id, label: h.archived ? 'Restore' : 'Archive' },
     { action: 'delete', attrs: id, label: armed ? 'Tap again to delete for good' : 'Delete', danger: true },
   ], 'pop-right') : '';
   const unit = h.unit ? ` ${esc(h.unit)}` : '';
-
-  return `
-    <div class="counter" style="${habitVars(h)}">
+  const timed = isTimeHabit(h) && k === todayKey();
+  const timerView = timed && !ui.countView;
+  const fb = (action, cls, icon, label) => `<button class="foot-btn" data-action="${action}" ${id}><span class="fi ${cls}">${icon}</span>${label}</button>`;
+  const foot = [
+    timed ? fb('style', 'style', ICON_SVG.clock, timerView ? 'Counter' : 'Timer') : '',
+    timerView ? fb('sound', 'sound', ICON_SVG.note, 'Sound') : '',
+    timerView ? fb('count-mode', 'watch', ICON_SVG.watch, ui.countUp ? 'Count up' : 'Countdown') : '',
+    fb('memo', 'memo', ICON_SVG.memo, 'Memo'),
+    fb('stat', 'stat', ICON_SVG.bars, 'Stat'),
+  ].filter(Boolean).join('');
+  const limit = isTimeHabit(h) ? fmtAmount(h, h.goal) : `${h.goal}${unit}`;
+  const rule = quit ? `<p class="cnt-desc rule${over ? ' over' : ''}">${over ? 'Over the limit today' : h.goal ? `*Don't exceed ${limit} each day` : '*Not even once today'}</p>` : '';
+  const head = `
       ${topBar(`<span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}`,
         roundBtn('back', ICON_SVG.left, 'Back'),
         roundBtn('menu', ICON_SVG.more, 'More options', `data-menu="habit" aria-haspopup="true" aria-expanded="${ui.menu === 'habit'}"`),
         menu)}
       ${k === todayKey() ? '' : `<p class="cnt-day">${esc(fmt(parseKey(k), { weekday: 'long', month: 'long', day: 'numeric' }))}</p>`}
-      ${h.archived ? '<p class="cnt-day">Archived. Use ••• to restore it to Today.</p>' : ''}
+      ${h.archived ? '<p class="cnt-day">Archived. Use ••• to restore it to Today.</p>' : ''}`;
+
+  if (timerView) {
+    const t = timerState(h);
+    return `
+    <div class="counter timer" style="${habitVars(h)}">
+      ${head}
+      <div class="ring-box">
+        <svg class="big-ring" viewBox="0 0 260 260" aria-hidden="true">
+          <circle cx="130" cy="130" r="${R}" class="prog full${over ? ' over' : ''}"/>
+          <circle cx="130" cy="14" r="7" class="knob" transform="rotate(${t.knob} 130 130)"/>
+        </svg>
+        <div class="ring-in">
+          <span class="clock" role="timer">${t.clock}</span>
+          <span class="ring-goal clock-sub">${esc(t.sub)}</span>
+        </div>
+      </div>
+      ${h.desc ? `<p class="cnt-desc">${esc(h.desc)}</p>` : ''}
+      ${rule}
+      <div class="cnt-actions">
+        <span class="reset-btn" aria-hidden="true"></span>
+        <button class="add-pill play" data-action="timer" ${id} aria-label="${t.running ? 'Pause the timer' : 'Start the timer'}">${t.running ? ICON_SVG.pause : ICON_SVG.play}</button>
+        <button class="done-btn" data-action="keypad" ${id} aria-label="Add time by hand">${ICON_SVG.plus}</button>
+      </div>
+      <div class="cnt-foot">${foot}</div>
+    </div>`;
+  }
+
+  return `
+    <div class="counter" style="${habitVars(h)}">
+      ${head}
       <div class="ring-box">
         <svg class="big-ring" viewBox="0 0 260 260" aria-hidden="true">
           <circle cx="130" cy="130" r="${R}" class="track"/>
-          ${p > 0 ? `<circle cx="130" cy="130" r="${R}" class="prog" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 130 130)"/>` : ''}
+          ${p > 0 ? `<circle cx="130" cy="130" r="${R}" class="prog${over ? ' over' : ''}" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 130 130)"/>` : ''}
         </svg>
         <div class="ring-in">
           <span class="ring-emoji" aria-hidden="true">${esc(h.icon)}</span>
-          <button class="ring-num" data-action="keypad" ${id} aria-label="${esc(`${c} of ${h.goal}${h.unit ? ` ${h.unit}` : ''}. Tap to type a number.`)}">${c}</button>
+          <button class="ring-num" data-action="keypad" ${id} aria-label="${esc(`${fmtNum(c)} of ${h.goal}${h.unit ? ` ${h.unit}` : ''}. Tap to type a number.`)}">${fmtNum(c)}</button>
           <span class="ring-goal" aria-hidden="true">/${h.goal}${unit}</span>
         </div>
         <button class="ring-plus" data-action="add-one" ${id} aria-label="Add one">${ICON_SVG.plus}</button>
         ${c > 0 ? `<button class="ring-minus" data-action="sub-one" ${id} aria-label="Take one away">${ICON_SVG.minus}</button>` : ''}
       </div>
       ${h.desc ? `<p class="cnt-desc">${esc(h.desc)}</p>` : ''}
+      ${rule}
       <div class="cnt-actions">
         ${c > 0 ? `<button class="reset-btn" data-action="reset-day" ${id} aria-label="Reset to 0">${ICON_SVG.undo}</button>` : '<span class="reset-btn" aria-hidden="true"></span>'}
         <button class="add-pill" data-action="keypad" ${id}>Add</button>
-        <button class="done-btn${done ? ' on' : ''}" data-action="complete" ${id} aria-pressed="${done}" aria-label="${done ? 'Done. Tap to undo.' : 'Mark as done'}">${ICON_SVG.tick}</button>
+        ${quit ? '<span class="done-btn ghost" aria-hidden="true"></span>' : `<button class="done-btn${done ? ' on' : ''}" data-action="complete" ${id} aria-pressed="${done}" aria-label="${done ? 'Done. Tap to undo.' : 'Mark as done'}">${ICON_SVG.tick}</button>`}
       </div>
-      <div class="cnt-foot">
-        <button class="foot-btn" data-action="memo" ${id}><span class="fi memo">${ICON_SVG.memo}</span>Memo</button>
-        <button class="foot-btn" data-action="stat" ${id}><span class="fi stat">${ICON_SVG.bars}</span>Stat</button>
-      </div>
+      <div class="cnt-foot">${foot}</div>
     </div>`;
 }
 
@@ -830,6 +991,7 @@ function dayClass(h, d, start, tk) {
   const k = keyOf(d);
   const c = countOf(h, k);
   if (k > tk) return 'future';
+  if (h.type === 'quit') return !c && !isDue(h, d, start) ? 'off' : c <= h.goal ? 'done' : 'miss';
   if (c >= h.goal) return 'done';
   if (c > 0) return 'part';
   return isDue(h, d, start) ? 'miss' : 'off';
@@ -1345,8 +1507,13 @@ function showSheet(html) {
   sheet.querySelector('.sheet-inner').scrollTop = 0;
 }
 
-function daysNote(goal, days, unit) {
+function daysNote(goal, days, unit, quit) {
   if (!days.length) return '*Pick at least one day';
+  if (quit) {
+    const when = days.length === 7 ? 'each day' : `on each ${weekOrder().filter((d) => days.includes(d)).map(dayCode).join(' ')}`;
+    const u = goal === 1 ? (unit || 'times').replace(/sses$/, 'ss').replace(/([^s])s$/, '$1') : unit || 'times';
+    return goal ? `*Don't exceed ${goal} ${u} ${when}` : `*Not even once, ${when}`;
+  }
   // "1 glass", "1 page": drop the plural ending when the goal is 1.
   const one = (u) => u.replace(/sses$/, 'ss').replace(/([^s])s$/, '$1');
   const what = `${goal} ${goal === 1 ? one(unit || 'times') : unit || 'times'}`;
@@ -1354,10 +1521,13 @@ function daysNote(goal, days, unit) {
   return `*Complete ${what} on each ${weekOrder().filter((d) => days.includes(d)).map(dayCode).join(' ')}`;
 }
 
+const isQuitForm = (form) => Boolean(form.querySelector('input[name="type"][value="quit"]:checked'));
+
 function updateDaysNote(form) {
-  const goal = clampInt(form.elements.goal.value, 1, MAX_COUNT, 1);
+  const quit = isQuitForm(form);
+  const goal = clampInt(form.elements.goal.value, quit ? 0 : 1, MAX_COUNT, 1);
   const days = [...form.querySelectorAll('input[name="days"]:checked')].map((i) => Number(i.value));
-  form.querySelector('.f-note').textContent = daysNote(goal, days, form.elements.unit.value.trim());
+  form.querySelector('.f-note').textContent = daysNote(goal, days, form.elements.unit.value.trim(), quit);
 }
 
 function setFormColor(form, c) {
@@ -1374,9 +1544,10 @@ function openSheet(h, preset) {
     desc: p.desc || '',
     icon: p.icon || ICONS[0],
     color: p.color || NEW_COLORS[state.habits.length % NEW_COLORS.length],
-    goal: p.goal || 1,
+    goal: p.goal !== undefined ? p.goal : 1,
     unit: p.unit || '',
-    days: ALL_DAYS,
+    type: p.type || 'build',
+    days: p.days || ALL_DAYS,
     time: 'any',
     group: '',
     reminder: '',
@@ -1430,10 +1601,16 @@ function openSheet(h, preset) {
       </section>
 
       <section class="fcard">
-        <div class="f-row"><span id="goal-label">Goal per day</span>
+        <div class="f-row"><span id="type-label">Habit type</span>
+          <div class="time-chips type-chips" role="radiogroup" aria-labelledby="type-label">
+            <label class="opt tchip"><input type="radio" name="type" value="build" ${v.type === 'quit' ? '' : 'checked'}><span>Build</span></label>
+            <label class="opt tchip"><input type="radio" name="type" value="quit" ${v.type === 'quit' ? 'checked' : ''}><span>Quit</span></label>
+          </div>
+        </div>
+        <div class="f-row"><span id="goal-label">${v.type === 'quit' ? 'Allowed per day' : 'Goal per day'}</span>
           <div class="stepper" role="group" aria-labelledby="goal-label">
             <button type="button" data-action="step" data-delta="-1" aria-label="One fewer">−</button>
-            <input type="number" name="goal" min="1" max="${MAX_COUNT}" value="${v.goal}" inputmode="numeric" aria-label="Goal per day">
+            <input type="number" name="goal" min="${v.type === 'quit' ? 0 : 1}" max="${MAX_COUNT}" value="${v.goal}" inputmode="numeric" aria-labelledby="goal-label">
             <button type="button" data-action="step" data-delta="1" aria-label="One more">+</button>
           </div>
         </div>
@@ -1451,7 +1628,7 @@ function openSheet(h, preset) {
         <div class="day-circles" role="group" aria-label="Task days">
           ${weekOrder().map((d) => `<label class="opt day-opt"><input type="checkbox" name="days" value="${d}" ${v.days.includes(d) ? 'checked' : ''} aria-label="${esc(dayName(d, 'long'))}"><span>${esc(dayCode(d))}</span></label>`).join('')}
         </div>
-        <p class="f-note" aria-live="polite">${esc(daysNote(v.goal, v.days, v.unit))}</p>
+        <p class="f-note" aria-live="polite">${esc(daysNote(v.goal, v.days, v.unit, v.type === 'quit'))}</p>
       </section>
 
       <section class="fcard">
@@ -1611,7 +1788,7 @@ function openKeypad(h) {
         <h2 id="sheet-title"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</h2>
         <span class="round-gap" aria-hidden="true"></span>
       </div>
-      <p class="kp-now">Now ${c} of ${h.goal}${h.unit ? ` ${esc(h.unit)}` : ''}</p>
+      <p class="kp-now">Now ${isTimeHabit(h) ? `${fmtAmount(h, c)} of ${fmtAmount(h, h.goal)} (type ${h.unit === 'hr' ? 'hours' : 'minutes'})` : `${fmtNum(c)} of ${h.goal}${h.unit ? ` ${esc(h.unit)}` : ''}`}</p>
       <input class="kp-input" type="number" name="amount" min="0" max="${MAX_COUNT}" inputmode="numeric" placeholder="1" aria-label="How many">
       <div class="kp-quick">${[1, 5, 10, 33, 100].map((n) => `<button type="button" class="pchip" data-action="kp-quick" data-value="${n}">${n}</button>`).join('')}</div>
       <button type="submit" class="save-btn" value="add">Add</button>
@@ -1686,13 +1863,50 @@ sheet.addEventListener('input', (e) => {
   const form = e.target.form;
   if (!form || form.id !== 'habit-form') return;
   if (e.target.name === 'icon_custom' && e.target.value.trim()) form.querySelector('.preview').textContent = e.target.value.trim();
-  if (e.target.name === 'goal' || e.target.name === 'unit') updateDaysNote(form);
+  if (e.target.name === 'type') {
+    const quit = isQuitForm(form);
+    form.querySelector('#goal-label').textContent = quit ? 'Allowed per day' : 'Goal per day';
+    form.elements.goal.min = quit ? 0 : 1;
+    if (!quit && Number(form.elements.goal.value) < 1) form.elements.goal.value = 1;
+  }
+  if (['goal', 'unit', 'type'].includes(e.target.name)) updateDaysNote(form);
 });
 
 sheet.addEventListener('submit', (e) => {
   e.preventDefault();
   const form = e.target;
   const fd = new FormData(form);
+
+  if (form.id === 'share-form') {
+    const h = findHabit(form.dataset.id);
+    if (!h) {
+      sheet.close();
+      return;
+    }
+    const me = cleanText(fd.get('me'), 30);
+    const friend = cleanText(fd.get('friend'), 30);
+    if (me) state.settings.name = me;
+    if (friend && !h.friends.includes(friend)) h.friends.push(friend);
+    const link = habitLink(h);
+    save();
+    sheet.close();
+    shareText(`${friend ? `Salaam ${friend}! ` : ''}Let's build “${h.icon} ${h.name}” together on Habit For Me 💪 Open this link to join. (If you use the app from your home screen: Group → + → Join with a link, and paste it.)`, link);
+    Object.assign(ui, { tab: 'group', detail: null, stat: false, menu: null });
+    render();
+    return;
+  }
+
+  if (form.id === 'join-form') {
+    const d = readLink(fd.get('link'));
+    if (!d) {
+      const error = form.querySelector('.form-error');
+      error.textContent = "That doesn't look like a Habit For Me link.";
+      error.hidden = false;
+      return;
+    }
+    openLink(d);
+    return;
+  }
 
   if (form.id === 'day-form') {
     setJournal(form.dataset.key, {
@@ -1762,7 +1976,8 @@ sheet.addEventListener('submit', (e) => {
     desc: String(fd.get('desc') || '').trim().slice(0, 40),
     icon: (custom || String(fd.get('icon') || ICONS[0])).slice(0, 8),
     color: String(fd.get('color') || NEW_COLORS[0]),
-    goal: clampInt(fd.get('goal'), 1, MAX_COUNT, 1),
+    type: fd.get('type') === 'quit' ? 'quit' : 'build',
+    goal: clampInt(fd.get('goal'), fd.get('type') === 'quit' ? 0 : 1, MAX_COUNT, 1),
     unit: String(fd.get('unit') || '').trim().slice(0, 12),
     days,
     time: String(fd.get('time') || 'any'),
@@ -1772,7 +1987,7 @@ sheet.addEventListener('submit', (e) => {
   };
   const existing = ui.editing && findHabit(ui.editing);
   if (existing) Object.assign(existing, data);
-  else state.habits.push({ id: newId(), createdAt: todayKey(), archived: false, ...data });
+  else state.habits.push({ id: newId(), createdAt: todayKey(), archived: false, shareId: '', friends: [], friendStats: {}, ...data });
 
   save();
   sheet.close();
@@ -1794,18 +2009,27 @@ function newId() {
 
 /* ---------- 7. Actions ---------- */
 
-/** After a count changes: a little buzz, a cheer when everything is done, and the memo if asked for. */
 /* Sounds: made here with Web Audio (no sound files). They play after a tap. */
 
 let audioCtx = null;
 
-/** Play bell-like notes: [frequency in Hz, start in seconds, length in seconds]. */
-function playNotes(notes, volume) {
+/** The sound engine, started on the first tap (phones only allow sound after a tap). */
+function audio() {
   const AC = window.AudioContext || window.webkitAudioContext;
-  if (!state.settings.sound || !AC) return;
+  if (!AC) return null;
   try {
     audioCtx = audioCtx || new AC();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  } catch (err) {
+    return null;
+  }
+}
+
+/** Play bell-like notes: [frequency in Hz, start in seconds, length in seconds]. */
+function playNotes(notes, volume) {
+  if (!state.settings.sound || !audio()) return;
+  try {
     const t0 = audioCtx.currentTime + 0.02;
     const out = audioCtx.createGain();
     out.gain.value = volume;
@@ -1971,7 +2195,14 @@ askBox.addEventListener('close', () => {
 });
 
 /** After a count changes: a buzz, a chime when a habit is finished, and confetti when the whole day is done. */
-function afterChange(h, before, after, k) {
+function afterChange(h, before, after, k, quiet) {
+  if (h.type === 'quit') {
+    // Quit habits: a warning buzz when going over the limit, no cheering.
+    const broke = before <= h.goal && after > h.goal;
+    if (navigator.vibrate) navigator.vibrate(broke ? [40, 60, 40] : 8);
+    if (broke) toast(`${h.icon} Over your limit for ${h.name} today`);
+    return;
+  }
   const finished = before < h.goal && after >= h.goal;
   if (navigator.vibrate) navigator.vibrate(finished ? 18 : 8);
   if (!finished) return;
@@ -1984,15 +2215,473 @@ function afterChange(h, before, after, k) {
     }
     fanfare();
     toast('All done for today! 🎉');
-  } else chime();
+  } else if (!quiet) chime();
   if (memo) memo();
 }
 
-/** The round button on Today: +1, or done/undo for once-a-day habits. */
+/* ---------- Timers for habits counted in minutes or hours ---------- */
+
+// Running timers: { habitId: { key: day, start: time in ms, from: seconds done before starting } }.
+// Kept apart from the habits, so a timer keeps going when the app is closed and opened again.
+const TIMERS_KEY = 'habit-for-me:timers';
+let timers = loadTimers();
+let lastTick = 0;
+let focusSrc = null; // the focus sound playing now
+let previewTimer = 0;
+const focusBuffers = {};
+
+function loadTimers() {
+  try {
+    const t = JSON.parse(localStorage.getItem(TIMERS_KEY) || '{}');
+    return t && typeof t === 'object' ? t : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveTimers() {
+  try {
+    localStorage.setItem(TIMERS_KEY, JSON.stringify(timers));
+  } catch (err) {
+    // Storage blocked: the timer still works while the app stays open.
+  }
+}
+
+/** Seconds done on a day, counting a timer that is running now. */
+function secsDone(h, k) {
+  const t = timers[h.id];
+  return countOf(h, k) * unitSecs(h) + (t && t.key === k ? (Date.now() - t.start) / 1000 : 0);
+}
+
+/** What the timer page shows: the clock, a line under it, and where the knob on the ring is. */
+function timerState(h) {
+  const done = secsDone(h, todayKey());
+  const left = h.goal * unitSecs(h) - done;
+  const down = !ui.countUp && left > 0;
+  const clock = ui.countUp ? fmtClock(done) : left > 0 ? fmtClock(left) : `+${fmtClock(-left)}`;
+  // The knob goes round once a minute: backwards while counting down, forwards when counting up.
+  const sec = Math.floor(ui.countUp ? done : Math.abs(left)) % 60;
+  const knob = down ? -((60 - sec) % 60) * 6 : sec * 6;
+  const sub = `${fmtAmount(h, done / unitSecs(h))} of ${fmtAmount(h, h.goal)}${h.type === 'quit' ? ' allowed' : ''}`;
+  return { clock, sub, knob, running: Boolean(timers[h.id]) };
+}
+
+function startTimer(h) {
+  const k = todayKey();
+  timers[h.id] = { key: k, start: Date.now(), from: secsDone(h, k) };
+  saveTimers();
+  startFocusSound(); // this runs from a tap, which also lets sound play on phones
+}
+
+/** Pause: add the time since starting to that day's count. */
+function stopTimer(h) {
+  const t = timers[h.id];
+  if (!t) return;
+  delete timers[h.id];
+  saveTimers();
+  if (!Object.keys(timers).length) stopFocusSound();
+  const before = countOf(h, t.key);
+  const after = Math.min(MAX_COUNT, Math.round((before + (Date.now() - t.start) / 1000 / unitSecs(h)) * 10000) / 10000);
+  setCount(h, t.key, after);
+  afterChange(h, before, after, t.key);
+}
+
+/** The goal (or a quit habit's limit) is reached: stop right on it and play the end sound. */
+function finishTimer(h) {
+  const t = timers[h.id];
+  delete timers[h.id];
+  saveTimers();
+  if (!Object.keys(timers).length) stopFocusSound();
+  const before = countOf(h, t.key);
+  const after = Math.max(before, h.goal);
+  setCount(h, t.key, after);
+  endSound();
+  if (document.hidden) remind(h, h.type === 'quit' ? 'You reached your limit for today.' : "Time's up. Well done!");
+  render();
+  afterChange(h, before, after, t.key, true);
+}
+
+/** Runs 4 times a second: finishes timers, moves the clock on the open page, and ticks. */
+function timerTick() {
+  const ids = Object.keys(timers);
+  if (!ids.length) return;
+  for (const id of ids) {
+    const h = findHabit(id);
+    const t = timers[id];
+    if (!h || !isTimeHabit(h)) {
+      delete timers[id];
+      saveTimers();
+    } else if (t.from < h.goal * unitSecs(h) && secsDone(h, t.key) >= h.goal * unitSecs(h)) finishTimer(h);
+  }
+  const h = ui.detail && !ui.stat && findHabit(ui.detail);
+  if (h && view.querySelector('.counter.timer')) {
+    const st = timerState(h);
+    view.querySelector('.clock').textContent = st.clock;
+    view.querySelector('.clock-sub').textContent = st.sub;
+    view.querySelector('.knob').setAttribute('transform', `rotate(${st.knob} 130 130)`);
+  }
+  const sec = Math.floor(Date.now() / 1000);
+  if (sec !== lastTick && Object.keys(timers).length) {
+    lastTick = sec;
+    if (state.settings.focusSound === 'tick') tickSound();
+  }
+}
+setInterval(timerTick, 250);
+
+/** A few seconds of rain, waves, fire or soft noise, made from random numbers, that loop smoothly. */
+function focusBuffer(ctx, name) {
+  if (focusBuffers[name]) return focusBuffers[name];
+  const len = ctx.sampleRate * (name === 'waves' ? 8 : 4);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const out = buf.getChannelData(0);
+  let brown = 0;
+  let crackle = 0;
+  for (let i = 0; i < len; i++) {
+    const white = Math.random() * 2 - 1;
+    brown = (brown + 0.02 * white) / 1.02;
+    if (name === 'waves') out[i] = brown * 3.5 * (0.25 + 0.75 * Math.sin((Math.PI * i) / len) ** 2);
+    else if (name === 'fire') {
+      if (Math.random() < 0.0003) crackle = 0.6 + Math.random() * 0.6;
+      crackle *= 0.995;
+      out[i] = brown * 2.5 + white * crackle;
+    } else out[i] = white * (name === 'rain' ? 0.5 : 0.35);
+  }
+  focusBuffers[name] = buf;
+  return buf;
+}
+
+/** The sound that plays while a timer runs (the tick is played each second by timerTick). */
+function startFocusSound(name = state.settings.focusSound) {
+  stopFocusSound();
+  if (!state.settings.sound || !audio() || name === 'silent' || name === 'tick') return;
+  try {
+    const ctx = audioCtx;
+    const src = ctx.createBufferSource();
+    src.buffer = focusBuffer(ctx, name);
+    src.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = { rain: 6000, waves: 650, fire: 2600, noise: 1200 }[name];
+    const gain = ctx.createGain();
+    gain.gain.value = { rain: 0.16, waves: 0.55, fire: 0.4, noise: 0.3 }[name];
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+    focusSrc = src;
+  } catch (err) {
+    focusSrc = null;
+  }
+}
+
+function stopFocusSound() {
+  if (focusSrc) {
+    try {
+      focusSrc.stop();
+    } catch (err) {
+      // It had already stopped.
+    }
+  }
+  focusSrc = null;
+}
+
+const tickSound = () => playNotes([[1900, 0, 0.03]], 0.05);
+
+/** The sound when a timer's time is up. */
+function endSound(name = state.settings.endSound) {
+  if (name === 'bell') playNotes([[880, 0, 2.2], [1320, 0, 1.4], [880, 0.8, 2.2], [1320, 0.8, 1.4]], 0.14);
+  else if (name === 'chime') playNotes([[1046.5, 0, 0.6], [1318.5, 0.15, 0.6], [1568, 0.3, 0.6], [2093, 0.45, 1.3]], 0.15);
+}
+
+function openSoundSheet(tab) {
+  const s = state.settings;
+  const list = tab === 'focus' ? FOCUS_SOUNDS : END_SOUNDS;
+  const now = tab === 'focus' ? s.focusSound : s.endSound;
+  showSheet(`
+    <div class="sound-sheet">
+      <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Select Sound</h2><span class="round-gap" aria-hidden="true"></span></div>
+      ${segButtons('sound-tab', [['focus', 'Focus Sound'], ['end', 'End Sound']], tab, 'Which sound')}
+      <div class="u-card">${list.map(([sid, label, emoji]) => `
+        <div class="u-item"><button type="button" class="u-row${sid === now ? ' on' : ''}" data-action="pick-sound" data-value="${tab}:${sid}" aria-pressed="${sid === now}">
+          <span class="u-name"><span><span aria-hidden="true">${emoji}</span> ${label}</span></span>${sid === now ? ICON_SVG.tick : ''}</button></div>`).join('')}
+      </div>
+      <p class="f-hint">${tab === 'focus' ? 'Plays while the timer runs.' : 'Plays when the time is up.'}${s.sound ? '' : ' Sounds are turned off in Me → Settings.'}</p>
+    </div>`);
+}
+
+/* ---------- The New Habit page: ready-made habits ---------- */
+
+function openTemplates(tab = ui.tplTab) {
+  ui.tplTab = tab;
+  const goalText = ([, , goal, unit, more]) => {
+    const amount = isTimeHabit({ unit }) ? fmtAmount({ unit }, goal) : `${goal}${unit ? ` ${unit}` : ''}`;
+    if (more && more.type === 'quit') return goal ? `≤ ${amount}` : 'never';
+    return goal === 1 && !unit ? '' : amount;
+  };
+  showSheet(`
+    <div class="tpl">
+      <div class="sheet-head">${closeBtn}<h2 id="sheet-title">New Habit</h2><span class="round-gap" aria-hidden="true"></span></div>
+      <div class="unit-tabs tpl-tabs" role="group" aria-label="Kinds of habits">
+        ${TEMPLATE_TABS.map(([name, emoji], i) => `<button type="button" class="pchip${i === tab ? ' on' : ''}" data-action="tpl-tab" data-value="${i}" aria-pressed="${i === tab}"><span aria-hidden="true">${emoji}</span> ${esc(name)}</button>`).join('')}
+      </div>
+      <ul class="tpl-list">
+        ${TEMPLATE_TABS[tab][2].map((t, i) => `<li><button type="button" class="tpl-row" data-action="tpl-pick" data-value="${i}"><span class="tpl-emoji" aria-hidden="true">${t[0]}</span><span class="tpl-name">${esc(t[1])}</span><span class="tpl-goal">${esc(goalText(t))}</span><span class="tpl-add" aria-hidden="true">${ICON_SVG.plus}</span></button></li>`).join('')}
+      </ul>
+      <button type="button" class="custom-btn" data-action="tpl-custom">Custom Habit</button>
+    </div>`);
+  const row = sheet.querySelector('.tpl-tabs');
+  const on = row.querySelector('.on');
+  row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
+}
+
+/* ---------- Group: share habits with friends ---------- */
+// There is no server, so invites, reminders and progress travel as links in messages (WhatsApp,
+// Messages…). Each link carries the habit and the sender's last 7 days: opening a friend's link adds
+// the habit (the first time) and shows how they are doing in the Group tab.
+
+let pendingJoin = null; // a friend's link waiting for "Add habit"
+
+const b64 = (text) => btoa(String.fromCharCode(...new TextEncoder().encode(text))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64 = (code) => new TextDecoder().decode(Uint8Array.from(atob(code.replace(/-/g, '+').replace(/_/g, '/')), (ch) => ch.charCodeAt(0)));
+
+/** The last 7 days of a habit, oldest first: 1 done, 0 not done, - not scheduled. */
+function lastWeek(h) {
+  const start = startKey(h);
+  let out = '';
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(new Date(), -i);
+    const due = isDue(h, d, start);
+    out += isDone(h, keyOf(d)) && (due || h.type !== 'quit') ? '1' : due ? '0' : '-';
+  }
+  return out;
+}
+
+const goalLine = (h) => `${h.type === 'quit' ? 'At most' : 'Goal'} ${isTimeHabit(h) ? fmtAmount(h, h.goal) : `${h.goal}${h.unit ? ` ${h.unit}` : ''}`} a day`;
+
+/** A link that opens Habit For Me with this habit and my progress in it. */
+function habitLink(h) {
+  if (!h.shareId) {
+    h.shareId = newId().replace(/-/g, '').slice(0, 16);
+    save();
+  }
+  const data = {
+    v: 1, s: h.shareId, n: h.name, i: h.icon, c: h.color, g: h.goal, u: h.unit, t: h.type === 'quit' ? 'q' : 'b',
+    d: h.days.join(''), f: state.settings.name || '', day: todayKey(), w: lastWeek(h), k: currentStreak(h),
+  };
+  return `${location.origin}${location.pathname}#h=${b64(JSON.stringify(data))}`;
+}
+
+/** Opens the phone's share sheet (WhatsApp, Messages…). Computers without one get WhatsApp. */
+function shareText(text, url) {
+  const full = `${text}\n${url}`;
+  if (navigator.share) navigator.share({ text: full }).catch(() => {});
+  else window.open(`https://wa.me/?text=${encodeURIComponent(full)}`, '_blank', 'noopener');
+}
+
+function statusLine(h) {
+  const k = todayKey();
+  const amount = `${fmtAmount(h, countOf(h, k))}/${fmtAmount(h, h.goal)}`;
+  if (h.type === 'quit') return isDone(h, k) ? `I'm under my limit today (${amount})` : 'I went over my limit today';
+  return isDone(h, k) ? 'I did it today ✅' : `I'm at ${amount} today`;
+}
+
+function sendRemind(h) {
+  const who = h.friends.length ? `${h.friends.join(', ')}, ` : '';
+  shareText(`🔔 ${who}did you do “${h.icon} ${h.name}” today? ${statusLine(h)}. Let's keep going together 💪`, habitLink(h));
+}
+
+function sendProgress(h) {
+  const streak = currentStreak(h);
+  shareText(`${h.icon} ${h.name}: ${statusLine(h)}${streak ? `, 🔥 ${plural(streak, 'day')} in a row` : ''}. Your turn! Open to see how we're doing:`, habitLink(h));
+}
+
+/** Reads a friend's link (or just the code in it). Returns its data, or null. */
+function readLink(text) {
+  const str = String(text || '');
+  const m = str.match(/#h=([\w-]+)/) || str.trim().match(/^([\w-]{40,})$/);
+  if (!m) return null;
+  try {
+    const d = JSON.parse(unb64(m[1]));
+    return d && d.v === 1 && typeof d.s === 'string' && d.s && typeof d.n === 'string' && d.n ? d : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function keepFriendProgress(h, from, d) {
+  if (!h.friends.includes(from)) h.friends.push(from);
+  if (isKey(d.day) && /^[01?-]{7}$/.test(String(d.w))) {
+    h.friendStats[from] = { day: d.day, week: d.w, streak: clampInt(d.k, 0, 99999, 0), at: Date.now() };
+  }
+}
+
+/** A friend's link: update how they are doing, or offer to add the habit the first time. */
+function openLink(d) {
+  const from = cleanText(d.f, 30) || 'Your friend';
+  const mine = state.habits.find((h) => h.shareId === d.s);
+  if (mine) {
+    keepFriendProgress(mine, from, d);
+    save();
+    if (sheet.open) sheet.close();
+    Object.assign(ui, { tab: 'group', detail: null, stat: false, menu: null });
+    render();
+    toast(`${from}'s progress is updated`);
+    return;
+  }
+  pendingJoin = d;
+  const color = /^#[0-9a-f]{6}$/i.test(d.c) ? d.c : NEW_COLORS[0];
+  showSheet(`
+    <div class="join">
+      <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Build together</h2><span class="round-gap" aria-hidden="true"></span></div>
+      <div class="share-card" style="--c:${color}"><span class="hc-icon" aria-hidden="true">${esc(cleanText(d.i, 8) || '✅')}</span><b>${esc(cleanText(d.n, 60))}</b></div>
+      <p class="join-text"><strong>${esc(from)}</strong> invited you to build this habit together. You'll see how each other is doing in the Group tab.</p>
+      ${state.settings.name ? '' : '<section class="fcard"><label class="f-row"><span>Your name</span><input type="text" id="join-me" maxlength="30" placeholder="So your friend knows it’s you" autocomplete="nickname"></label></section>'}
+      <button type="button" class="save-btn" data-action="join-yes">Add habit</button>
+      <button type="button" class="ghost-btn" data-action="close-sheet">Not now</button>
+    </div>`);
+}
+
+/** Opening the app from a friend's link (…#h=…). */
+function checkLink() {
+  if (!location.hash.startsWith('#h=')) return;
+  const d = readLink(location.hash);
+  history.replaceState(null, '', location.pathname + location.search);
+  if (d) openLink(d);
+  else toast("That link didn't work. Ask your friend to send it again.");
+}
+window.addEventListener('hashchange', checkLink);
+
+function renderGroup() {
+  const add = roundBtn('group-add', ICON_SVG.plus, 'Share or join a habit');
+  const shared = active().filter((h) => h.shareId);
+  if (!shared.length) {
+    return `${topBar('Group', '', add)}
+      <section class="empty group-empty">
+        <div class="group-art" aria-hidden="true">🤝</div>
+        <p>It's always nicer to have someone by your side.<br>Tap <strong>+</strong> to invite a friend.</p>
+      </section>`;
+  }
+  return `${topBar('Group', '', add)}
+    <ul class="glist">${shared.map(groupCard).join('')}</ul>
+    <p class="group-note">A friend's progress updates when they send it and you open their link. Tap <strong>My progress</strong> so they can see yours.</p>`;
+}
+
+function groupCard(h) {
+  const id = `data-id="${esc(h.id)}"`;
+  const people = [
+    { name: state.settings.name || 'You', me: true, day: todayKey(), week: lastWeek(h), streak: currentStreak(h) },
+    ...h.friends.map((f) => ({ name: f, ...(h.friendStats[f] || {}) })),
+  ];
+  return `
+    <li class="gcard" style="${habitVars(h)}">
+      <button class="g-head" data-action="open" ${id} aria-label="${esc(`Open ${h.name}`)}">
+        <span class="hc-icon" aria-hidden="true">${esc(h.icon)}</span>
+        <span class="g-title"><b>${esc(h.name)}</b><small>${esc(goalLine(h))}</small></span>
+        ${ICON_SVG.right}
+      </button>
+      <ul class="g-people">${people.map(personRow).join('')}</ul>
+      <div class="g-actions">
+        <button class="pchip" data-action="remind" ${id}>${ICON_SVG.bell}Remind</button>
+        <button class="pchip" data-action="share-progress" ${id}>${ICON_SVG.share}My progress</button>
+        <button class="pchip" data-action="share-habit" ${id}>${ICON_SVG.plus}Invite</button>
+      </div>
+    </li>`;
+}
+
+/** A friend's 7 days end on the day they sent them; move them along so the last dot is today. */
+function weekToToday(week, day) {
+  const gap = Math.round((parseKey(todayKey()) - parseKey(day)) / 864e5);
+  return gap <= 0 ? week : (week + '?'.repeat(Math.min(gap, 7))).slice(-7);
+}
+
+function personRow(p) {
+  const known = Boolean(p.week);
+  const week = known ? weekToToday(p.week, p.day) : '???????';
+  const gap = known ? Math.round((parseKey(todayKey()) - parseKey(p.day)) / 864e5) : 0;
+  const status = !known ? 'Waiting for their first update'
+    : week.slice(-1) === '1' ? 'Done today ✅'
+      : gap <= 0 ? 'Not done yet today' : `Last update ${gap === 1 ? 'yesterday' : `${gap} days ago`}`;
+  const streak = known && p.streak ? ` · 🔥 ${p.streak}` : '';
+  const dots = [...week].map((c) => `<i class="${c === '1' ? 'y' : c === '0' ? 'n' : 'x'}"></i>`).join('');
+  return `
+    <li class="g-person">
+      <span class="g-avatar${p.me ? ' me' : ''}" aria-hidden="true">${esc(p.me ? state.settings.avatar : p.name.slice(0, 1).toUpperCase())}</span>
+      <span class="g-who"><b>${esc(p.name)}${p.me && state.settings.name ? ' <small>(you)</small>' : ''}</b><small>${esc(status + streak)}</small></span>
+      <span class="g-week" role="img" aria-label="${esc(`Last 7 days: ${[...week].filter((c) => c === '1').length} done`)}">${dots}</span>
+    </li>`;
+}
+
+function openGroupAdd() {
+  showSheet(`
+    <div class="group-add">
+      <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Group</h2><span class="round-gap" aria-hidden="true"></span></div>
+      <div class="group-art small" aria-hidden="true">🤝</div>
+      <p class="ga-title">Create or join shared habits</p>
+      <button type="button" class="ga-btn pink" data-action="share-pick">${ICON_SVG.people}Share habits with others</button>
+      <button type="button" class="ga-btn orange" data-action="join-open">${ICON_SVG.link}Join with a link</button>
+    </div>`);
+}
+
+function openSharePick() {
+  const list = active();
+  showSheet(`
+    <div class="share-pick">
+      <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Which habit?</h2><span class="round-gap" aria-hidden="true"></span></div>
+      ${list.length ? `<ul class="tpl-list">${list.map((h) => `<li><button type="button" class="tpl-row" data-action="share-habit" data-id="${esc(h.id)}"><span class="tpl-emoji" aria-hidden="true">${esc(h.icon)}</span><span class="tpl-name">${esc(h.name)}</span><span class="tpl-goal">${esc(h.friends.join(', '))}</span><span class="tpl-add" aria-hidden="true">${ICON_SVG.right}</span></button></li>`).join('')}</ul>`
+        : '<p class="empty-note">Add a habit first, then share it here.</p>'}
+    </div>`);
+}
+
+function openShareHabit(h) {
+  showSheet(`
+    <form id="share-form" data-id="${esc(h.id)}" novalidate>
+      <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Build with a friend</h2><span class="round-gap" aria-hidden="true"></span></div>
+      <div class="share-card" style="${habitVars(h)}"><span class="hc-icon" aria-hidden="true">${esc(h.icon)}</span><b>${esc(h.name)}</b><small>${esc(goalLine(h))}</small></div>
+      <section class="fcard">
+        <label class="f-row"><span>Friend's name</span><input type="text" name="friend" maxlength="30" placeholder="(Optional)" autocomplete="off"></label>
+        ${state.settings.name ? '' : '<label class="f-row"><span>Your name</span><input type="text" name="me" maxlength="30" placeholder="So they know it’s you" autocomplete="nickname"></label>'}
+      </section>
+      <p class="f-hint">They get a link in WhatsApp (or any app you pick). Opening it adds this habit for them. Then you can remind each other and see how you're both doing in the Group tab.</p>
+      <button type="submit" class="save-btn">Send invite</button>
+    </form>`);
+}
+
+function openJoin() {
+  showSheet(`
+    <form id="join-form" novalidate>
+      <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Join a shared habit</h2><span class="round-gap" aria-hidden="true"></span></div>
+      <section class="fcard"><label class="f-row col"><span>Paste the link your friend sent</span>
+        <input type="url" name="link" placeholder="https://…#h=…" autocomplete="off" class="link-in"></label></section>
+      ${navigator.clipboard && navigator.clipboard.readText ? '<button type="button" class="ghost-btn" data-action="paste-link">Paste</button>' : ''}
+      <p class="form-error" role="alert" hidden></p>
+      <button type="submit" class="save-btn">Join</button>
+    </form>`);
+}
+
+/** The round button on Today: +1, done/undo for once-a-day habits, or start/pause a timer. */
 function tick(h) {
   const k = ui.date;
   if (k > todayKey()) return;
   const c = countOf(h, k);
+  if (isTimeHabit(h) && k === todayKey()) {
+    if (timers[h.id]) {
+      stopTimer(h);
+      render();
+    } else if (isDone(h, k) && h.type !== 'quit') openCounter(h);
+    else {
+      startTimer(h);
+      openCounter(h);
+    }
+    return;
+  }
+  if (h.type === 'quit') {
+    // Quit habits count each slip; open the habit to take one back.
+    const next = Math.min(c + 1, MAX_COUNT);
+    setCount(h, k, next);
+    render();
+    afterChange(h, c, next, k);
+    return;
+  }
   if (c >= h.goal && h.goal > 1) {
     // Bigger counts are changed on the habit's own page, so one tap never wipes them.
     openCounter(h);
@@ -2114,7 +2803,7 @@ document.addEventListener('click', (e) => {
   switch (action) {
     case 'tab':
       if (value === undefined && el.dataset.tab === 'today' && ui.tab === 'today' && !ui.detail && el.classList.contains('tab')) {
-        openSheet(null); // the pink + on Today
+        openTemplates(); // the pink + on Today: ready-made habits first
         break;
       }
       ui.tab = el.dataset.tab;
@@ -2125,7 +2814,109 @@ document.addEventListener('click', (e) => {
       break;
     case 'add':
       ui.menu = null;
+      openTemplates();
+      break;
+    case 'tpl-tab':
+      openTemplates(Number(value));
+      break;
+    case 'tpl-pick': {
+      const [icon, name, goal, unit, more = {}] = TEMPLATE_TABS[ui.tplTab][2][Number(value)];
+      const colors = PALETTES[0][1];
+      openSheet(null, { icon, name, goal, unit, type: more.type, days: more.days, color: colors[(ui.tplTab * 5 + Number(value)) % colors.length] });
+      break;
+    }
+    case 'tpl-custom':
       openSheet(null);
+      break;
+    case 'timer':
+      if (!h) break;
+      if (timers[h.id]) stopTimer(h);
+      else startTimer(h);
+      render();
+      break;
+    case 'style':
+      ui.countView = !ui.countView;
+      render();
+      break;
+    case 'count-mode':
+      ui.countUp = !ui.countUp;
+      render();
+      break;
+    case 'sound':
+      openSoundSheet('focus');
+      break;
+    case 'sound-tab':
+      openSoundSheet(value);
+      break;
+    case 'pick-sound': {
+      const [tab, sid] = value.split(':');
+      if (tab === 'focus') {
+        state.settings.focusSound = sid;
+        save();
+        // Let it be heard: switch the sound if a timer is on, or play it for a few seconds.
+        startFocusSound(sid);
+        if (sid === 'tick') tickSound();
+        clearTimeout(previewTimer);
+        if (!Object.keys(timers).length) previewTimer = setTimeout(stopFocusSound, 3000);
+      } else {
+        state.settings.endSound = sid;
+        save();
+        endSound(sid);
+      }
+      openSoundSheet(tab);
+      break;
+    }
+    case 'group-add':
+      openGroupAdd();
+      break;
+    case 'share-pick':
+      openSharePick();
+      break;
+    case 'share-habit':
+      if (!h) break;
+      ui.menu = null;
+      render();
+      openShareHabit(h);
+      break;
+    case 'join-open':
+      openJoin();
+      break;
+    case 'paste-link':
+      navigator.clipboard.readText().then((text) => {
+        const input = sheet.querySelector('#join-form input[name="link"]');
+        if (input) input.value = text.trim();
+      }).catch(() => toast('Press and hold the box, then choose Paste'));
+      break;
+    case 'join-yes': {
+      const d = pendingJoin;
+      if (!d) break;
+      const me = sheet.querySelector('#join-me');
+      if (me && me.value.trim()) state.settings.name = cleanText(me.value, 30);
+      const from = cleanText(d.f, 30) || 'Your friend';
+      const days = [...new Set(String(d.d || '').split('').map(Number))].filter((x) => x >= 0 && x <= 6).sort();
+      const quit = d.t === 'q';
+      const joined = {
+        id: newId(), createdAt: todayKey(), archived: false, name: cleanText(d.n, 60), desc: '',
+        icon: cleanText(d.i, 8) || '✅', color: /^#[0-9a-f]{6}$/i.test(d.c) ? d.c.toLowerCase() : NEW_COLORS[0],
+        type: quit ? 'quit' : 'build', goal: clampInt(d.g, quit ? 0 : 1, MAX_COUNT, 1), unit: cleanText(d.u, 12),
+        days: days.length ? days : ALL_DAYS.slice(), time: 'any', group: '', reminder: '', memo: false,
+        shareId: cleanText(d.s, 40), friends: [], friendStats: {},
+      };
+      keepFriendProgress(joined, from, d);
+      state.habits.push(joined);
+      pendingJoin = null;
+      save();
+      sheet.close();
+      Object.assign(ui, { tab: 'group', detail: null, stat: false, menu: null });
+      render();
+      toast(`${joined.icon} ${joined.name} added. Tap My progress so ${from} can see yours.`);
+      break;
+    }
+    case 'remind':
+      if (h) sendRemind(h);
+      break;
+    case 'share-progress':
+      if (h) sendProgress(h);
       break;
     case 'suggest':
       openSheet(null, SUGGESTIONS[Number(el.dataset.i)]);
@@ -2394,7 +3185,7 @@ document.addEventListener('click', (e) => {
     case 'step': {
       const form = el.closest('form');
       const input = form.elements.goal;
-      input.value = clampInt(Number(input.value) + Number(el.dataset.delta), 1, MAX_COUNT, 1);
+      input.value = clampInt(Number(input.value) + Number(el.dataset.delta), isQuitForm(form) ? 0 : 1, MAX_COUNT, 1);
       updateDaysNote(form);
       break;
     }
@@ -2553,9 +3344,9 @@ function checkReminders() {
   }
 }
 
-function remind(h) {
+function remind(h, body) {
   const title = `${h.icon} ${h.name}`;
-  const options = { body: 'Time for this habit. Tap to open Habit For Me.', icon: 'icons/icon-192.png', tag: `habit-${h.id}` };
+  const options = { body: body || 'Time for this habit. Tap to open Habit For Me.', icon: 'icons/icon-192.png', tag: `habit-${h.id}` };
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     const fallback = () => {
       try {
@@ -2593,3 +3384,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 applyTheme();
 render();
 checkReminders();
+checkLink();

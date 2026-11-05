@@ -36,7 +36,7 @@ Still there from v2: reminders, and a mood and note for each day.
 
 ## Code map
 
-- `index.html`: page shell (floating tab bar: Today, Stats, All habits, Me; sheet dialog; toast).
+- `index.html`: page shell (floating tab bar: Today, Stats, Group, All habits, Me; sheet, party and ask dialogs; toast).
   On Today, the Today tab turns into a pink **+** that adds a habit.
 - `app.js`: all logic, in numbered sections: constants, date helpers, saving/loading,
   habit maths (streaks, rates, `periodStats`), screens (Today, Stats, All habits, Me, a habit's
@@ -49,9 +49,12 @@ Still there from v2: reminders, and a mood and note for each day.
   renaming or removing files.
 - Data shape (version 4; v4 only changed the default week start to Saturday): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,
   days: [0-6], time: any|morning|afternoon|evening, group, reminder: "HH:MM" or "", memo, archived,
-  createdAt }], log: { habitId: { "YYYY-MM-DD": count } }, memos: { habitId: { "YYYY-MM-DD": { text, emoji } } },
-  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart: 6 Sat | 0 Sun | 1 Mon, name, avatar, sound, celebrate } }`
-  (sound and celebrate are true unless turned off).
+  createdAt, type: build|quit (quit: goal is a limit, 0-999, done while count <= goal),
+  shareId, friends: [names], friendStats: { name: { day, week: "1101-01", streak, at } } }], log: { habitId: { "YYYY-MM-DD": count } }, memos: { habitId: { "YYYY-MM-DD": { text, emoji } } },
+  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart: 6 Sat | 0 Sun | 1 Mon, name, avatar, sound, celebrate, focusSound, endSound } }`
+  (sound and celebrate are true unless turned off). Counts of habits in `min`/`hr` can have up to
+  4 decimals (the timer adds parts of a minute). Running timers live apart, in localStorage
+  `habit-for-me:timers` ({ habitId: { key, start, from } }), so they keep going if the app closes.
   The owner's family is Muslim and their week starts on Saturday, so that is the default.
   Keep `normalize()` able to read older data so people's habits are never lost.
 
@@ -92,8 +95,17 @@ Still there from v2: reminders, and a mood and note for each day.
   cards of items showing their measurement (or › to choose one) under small section titles, and a search box
   at the bottom that can also take your own unit. Only the chosen item is lit (matched by the habit's name).
   It is a panel over the form (`UNIT_KINDS`; item names must all be different; Other holds plain units).
-- Add/edit: grouped dark cards, colour picker with Bright and Soft sets, day circles, time-of-day
-  chips, switches; the form takes the habit's colour as its accent.
+- Add/edit: grouped dark cards, colour picker with Bright and Soft sets, Habit type (Build/Quit), day circles,
+  time-of-day chips, switches; the form takes the habit's colour as its accent.
+- New Habit page (the pink +): `TEMPLATE_TABS` (Popular, Faith, Health, Sports, Lifestyle, Time, Quit), rows with
+  emoji, name, goal and +, and a floating **Custom Habit** button for the blank form.
+- Timer page (habits in `min`/`hr`, today only): full ring in the habit's colour with a white knob that goes round
+  once a minute, the clock, play/pause pill and + (add by hand), and Counter (Style), Sound, Countdown, Memo, Stat.
+  Focus and end sounds are made in `focusBuffer()`/`endSound()`.
+- Group tab: shared habits with your row and each friend's (7 dots and streak), Remind, My progress, Invite.
+  There is no server: links (`#h=` + base64 JSON with the habit and the sender's last 7 days) go by WhatsApp or
+  the share sheet; opening one adds the habit or updates that friend. iPhone home-screen apps have their own
+  storage, so they join with Group → + → Join with a link (paste).
 
 ## Working rules
 
@@ -112,4 +124,5 @@ Still there from v2: reminders, and a mood and note for each day.
 
 - Done: the owner's email was removed from the history, the repo is public, and the app is live.
 - Pick the next feature from "Ideas for later" in `README.md`. Features the Habit Tracker app
-  has that we don't yet: quit habits, widgets, friends, Apple Health sync (not possible in a web app).
+  has that we don't yet: Goal Period (week-long and month-long goals), widgets, live friend progress (needs the
+  Firebase account on the `sign-in` branch), Apple Health sync and Apple Music (not possible in a web app).

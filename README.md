@@ -29,6 +29,15 @@ Check off your habits every day, build streaks, and see your progress.
   for today is done (turn either off in Me → Settings; “Don't show again” also turns the confetti off)
 - [x] Finished days get a pink ring with ✨ (Today and Stats); finished habits get a green badge and a 🔥 streak
 - [x] On a habit's page: − inside the ring, and ↺ to reset the day (it asks first)
+- [x] New Habit page: ready-made habits in tabs (Popular, Faith, Health, Sports, Lifestyle, Time, Quit),
+  or **Custom Habit** for your own
+- [x] Build or Quit habits: a Quit habit has a limit (“Don't exceed 5 cigarettes each day”) and counts as
+  done while you stay under it
+- [x] Timer for habits counted in minutes or hours: start/pause, countdown or count up, focus sounds
+  (Tick, Rain, Waves, Fire, Soft noise) and an end sound (Bell, Chime)
+- [x] Group tab: share a habit with friends by link (WhatsApp or any app), remind each other, and see how
+  each friend is doing (last 7 days and streak). Without a server, a friend's progress updates when they
+  send it and you open their link
 - [x] Fits every screen: phones, tablets and iPads, and laptops
 - [x] Dark look by default, a sun/moon button on Today to switch to light, and Auto in Me → Settings
 - [x] Works offline and installs on your phone's home screen like an app
