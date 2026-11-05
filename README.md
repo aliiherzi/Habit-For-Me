@@ -25,6 +25,10 @@ Check off your habits every day, build streaks, and see your progress.
   Body Measurements, Nutrition Intake, Workout, Mind & Sleep, Study & Work, Faith, Self-care,
   Home & Money, Family & Friends and Other. Each item has its measurements; search, or type your own unit
 - [x] The week starts on Saturday (or Sunday or Monday, in Me → Settings)
+- [x] A chime when you finish a habit, and confetti with “WELL DONE!! YOU DID IT!!” when everything
+  for today is done (turn either off in Me → Settings; “Don't show again” also turns the confetti off)
+- [x] Finished days get a pink ring with ✨ (Today and Stats); finished habits get a green badge and a 🔥 streak
+- [x] On a habit's page: − inside the ring, and ↺ to reset the day (it asks first)
 - [x] Fits every screen: phones, tablets and iPads, and laptops
 - [x] Dark look by default, a sun/moon button on Today to switch to light, and Auto in Me → Settings
 - [x] Works offline and installs on your phone's home screen like an app

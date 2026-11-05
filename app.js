@@ -176,12 +176,25 @@ const TIPS = [
 ];
 
 const svg = (body, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+// A green seal with a tick: the badge on a finished habit's card.
+const SEAL_SVG = (() => {
+  let d = '';
+  for (let i = 0; i < 96; i++) {
+    const a = (i / 96) * Math.PI * 2;
+    const r = 10.7 + 0.85 * Math.cos(a * 12);
+    d += `${i ? 'L' : 'M'}${(12 + r * Math.sin(a)).toFixed(2)} ${(12 - r * Math.cos(a)).toFixed(2)}`;
+  }
+  return `<svg class="seal" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}Z" fill="#30c15a"/><path d="M7.7 12.3l2.9 2.9 5.7-5.9" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+})();
 const ICON_SVG = {
   tick: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 2.8),
   left: svg('<path d="M15 6l-6 6 6 6"/>', 2.2),
   right: svg('<path d="M9 6l6 6-6 6"/>', 2.2),
   down: svg('<path d="M7 10l5 5 5-5"/>', 2.2),
   plus: svg('<path d="M12 5v14M5 12h14"/>', 2.4),
+  minus: svg('<path d="M5 12h14"/>', 2.4),
+  undo: svg('<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/>', 2.2),
+  warn: svg('<path d="M12 4.2 2.9 19.5h18.2z"/><path d="M12 10v4M12 16.9h.01"/>', 2),
   close: svg('<path d="M6 6l12 12M18 6L6 18"/>', 2.2),
   more: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
   smile: svg('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2"/><path d="M9.2 9.6h.01M14.8 9.6h.01" stroke-width="3"/>'),
@@ -259,7 +272,7 @@ function defaultState() {
     log: {},
     memos: {},
     journal: {},
-    settings: { theme: 'dark', weekStart: 6, name: '', avatar: '🙂' }, // weekStart 6 = Saturday
+    settings: { theme: 'dark', weekStart: 6, name: '', avatar: '🙂', sound: true, celebrate: true }, // weekStart 6 = Saturday
   };
 }
 
@@ -350,6 +363,8 @@ function normalize(raw) {
   if (!(raw.version >= 4) && st.weekStart === 1) s.settings.weekStart = 6;
   s.settings.name = cleanText(st.name, 30);
   if (typeof st.avatar === 'string' && st.avatar.trim()) s.settings.avatar = st.avatar.trim().slice(0, 8);
+  if (st.sound === false) s.settings.sound = false;
+  if (st.celebrate === false) s.settings.celebrate = false;
   return s;
 }
 
@@ -725,7 +740,7 @@ function dateStrip() {
     cells += `
       <button class="${cls.join(' ')}" data-action="pick-day" data-key="${k}" aria-label="${esc(label)}"${k === ui.date ? ' aria-current="date"' : ''}>
         <span class="sd-dow" aria-hidden="true">${esc(fmt(d, { weekday: 'short' }).slice(0, 2))}</span>
-        <span class="sd-ring" style="--p:${(p || 0).toFixed(3)}" aria-hidden="true"><b>${d.getDate()}</b></span>
+        <span class="sd-ring" style="--p:${(p || 0).toFixed(3)}" aria-hidden="true"><b>${d.getDate()}</b>${p === 1 ? '<i class="spark">✨</i>' : ''}</span>
       </button>`;
   }
   return `<div class="strip" role="group" aria-label="Pick a day">${cells}</div>`;
@@ -737,20 +752,21 @@ function habitCard(h, k) {
   const done = c >= h.goal;
   const p = Math.min(c / h.goal, 1);
   const streak = currentStreak(h);
-  const meta = h.desc ? esc(h.desc) : streak ? `🔥 ${plural(streak, 'day')}` : h.reminder ? `⏰ ${esc(fmtTime(h.reminder))}` : '';
+  const meta = h.desc ? esc(h.desc) : h.reminder ? `⏰ ${esc(fmtTime(h.reminder))}` : '';
   const label = done
     ? (h.goal > 1 ? `${h.name}: done. Open it to change the count.` : `${h.name}: done. Tap to undo.`)
     : h.goal > 1 ? `${h.name}: ${c} of ${h.goal}. Tap to add one.` : `${h.name}: not done. Tap to check it off.`;
   return `
     <li class="hc${done ? ' done' : ''}" style="${habitVars(h)};--p:${p.toFixed(3)}">
-      <button class="hc-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(`${h.name}, ${c} of ${h.goal}. Open counter.`)}">
+      ${streak ? `<span class="hc-streak" aria-hidden="true">🔥 ${streak} ${streak === 1 ? 'Day' : 'Days'}</span>` : ''}
+      <button class="hc-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(`${h.name}, ${c} of ${h.goal}${streak ? `, ${plural(streak, 'day')} in a row` : ''}. Open counter.`)}">
         <span class="hc-icon" aria-hidden="true">${esc(h.icon)}</span>
         <span class="hc-body">
           <span class="hc-name">${esc(h.name)}</span>
           <span class="hc-meta"><span class="hc-count">${c}/${h.goal}</span>${meta ? `<span class="hc-desc">${meta}</span>` : ''}</span>
         </span>
       </button>
-      <button class="hc-btn" data-action="tick" data-id="${esc(h.id)}" aria-pressed="${done}" aria-label="${esc(label)}">${done || h.goal === 1 ? ICON_SVG.tick : ICON_SVG.plus}</button>
+      <button class="hc-btn" data-action="tick" data-id="${esc(h.id)}" aria-pressed="${done}" aria-label="${esc(label)}">${done ? SEAL_SVG : h.goal === 1 ? ICON_SVG.tick : ICON_SVG.plus}</button>
     </li>`;
 }
 
@@ -792,9 +808,11 @@ function renderCounter(h) {
           <span class="ring-goal" aria-hidden="true">/${h.goal}${unit}</span>
         </div>
         <button class="ring-plus" data-action="add-one" ${id} aria-label="Add one">${ICON_SVG.plus}</button>
+        ${c > 0 ? `<button class="ring-minus" data-action="sub-one" ${id} aria-label="Take one away">${ICON_SVG.minus}</button>` : ''}
       </div>
       ${h.desc ? `<p class="cnt-desc">${esc(h.desc)}</p>` : ''}
       <div class="cnt-actions">
+        ${c > 0 ? `<button class="reset-btn" data-action="reset-day" ${id} aria-label="Reset to 0">${ICON_SVG.undo}</button>` : '<span class="reset-btn" aria-hidden="true"></span>'}
         <button class="add-pill" data-action="keypad" ${id}>Add</button>
         <button class="done-btn${done ? ' on' : ''}" data-action="complete" ${id} aria-pressed="${done}" aria-label="${done ? 'Done. Tap to undo.' : 'Mark as done'}">${ICON_SVG.tick}</button>
       </div>
@@ -1033,10 +1051,10 @@ function statsCalendar(list) {
     const cls = ['cd'];
     if (d.getMonth() !== first.getMonth()) cls.push('out');
     if (future) cls.push('future');
-    if (p === 1) cls.push('done');
+    if (p === 1) cls.push('perfect');
     if (k === tk) cls.push('today');
     const label = `${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}${p === null ? '' : `: ${pct(p)} done`}. Open this day.`;
-    cells += `<button class="${cls.join(' ')}" style="--p:${(p || 0).toFixed(3)}" data-action="goto-day" data-key="${k}" ${future ? 'disabled' : ''} aria-label="${esc(label)}"><b>${d.getDate()}</b></button>`;
+    cells += `<button class="${cls.join(' ')}" style="--p:${(p || 0).toFixed(3)}" data-action="goto-day" data-key="${k}" ${future ? 'disabled' : ''} aria-label="${esc(label)}"><b>${d.getDate()}</b>${p === 1 ? '<i class="spark" aria-hidden="true">✨</i>' : ''}</button>`;
   }
   const atLatest = ui.smonth >= tk.slice(0, 7);
   return `
@@ -1093,10 +1111,10 @@ function rateCard(list, single) {
   const p = st.rate || 0;
   const dd = (n) => (n === 1 ? 'Day' : 'Days');
   const items = [
-    ['medal', '#ffa94d', best, dd(best), 'Best streak'],
-    single ? ['cal', '#3d8bff', st.done, dd(st.done), 'Days done'] : ['cal', '#3d8bff', st.perfect, dd(st.perfect), 'Perfect days'],
-    single ? ['check', '#3ccf7a', st.volume, '', 'Times done'] : ['check', '#3ccf7a', st.done, '', 'Habits done'],
-    ['avg', '#b36bff', fmtNum((single ? st.volume : st.done) / Math.max(st.days, 1)), '', 'Daily average'],
+    ['medal', '#ffa94d', best, dd(best), 'Best Streaks'],
+    single ? ['cal', '#3d8bff', st.done, dd(st.done), 'Days Done'] : ['cal', '#3d8bff', st.perfect, dd(st.perfect), 'Perfect Days'],
+    single ? ['check', '#3ccf7a', st.volume, '', 'Times Done'] : ['check', '#3ccf7a', st.done, '', 'Habits Done'],
+    ['avg', '#b36bff', fmtNum((single ? st.volume : st.done) / Math.max(st.days, 1)), '', 'Daily Average'],
   ];
   const period = ui.rateYear ? String(y) : fmt(monthStart(ui.smonth), { month: 'long', year: 'numeric' });
   return `
@@ -1107,8 +1125,8 @@ function rateCard(list, single) {
           ${p > 0 ? `<circle cx="100" cy="100" r="${R}" class="prog" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 100 100)"/>` : ''}
         </svg>
         <div class="rate-in">
-          <b>${st.rate === null ? '–' : `${(st.rate * 100).toFixed(2)}%`}</b>
-          <span>${ui.rateYear ? 'Yearly rate' : 'Monthly rate'}</span>
+          <b>${st.rate === null ? '–' : `${fmtNum(st.rate * 100)}%`}</b>
+          <span>${ui.rateYear ? 'Yearly Rate' : 'Monthly Rate'}</span>
           <button class="swap" data-action="rate-mode" aria-label="${ui.rateYear ? 'Show the monthly rate' : 'Show the yearly rate'}" title="Month or year">${ICON_SVG.swap}</button>
         </div>
       </div>
@@ -1262,6 +1280,8 @@ function renderMe() {
           <div class="row"><span>Appearance</span>${segButtons('theme', [['dark', 'Dark'], ['light', 'Light'], ['system', 'Auto']], t, 'Appearance')}</div>
           <div class="row"><span>Week starts on</span>${segButtons('week-start', [['6', 'Sat'], ['0', 'Sun'], ['1', 'Mon']], String(ws), 'Week starts on')}</div>
           <div class="row"><span>Reminder notifications</span>${notifControl()}</div>
+          <div class="row"><span id="sound-label">Sounds</span><label class="switch"><input type="checkbox" data-action="set-sound" ${s.sound ? 'checked' : ''} aria-labelledby="sound-label"><span aria-hidden="true"></span></label></div>
+          <div class="row"><span id="party-label">Celebrate when all done</span><label class="switch"><input type="checkbox" data-action="set-celebrate" ${s.celebrate ? 'checked' : ''} aria-labelledby="party-label"><span aria-hidden="true"></span></label></div>
           <button class="row" data-action="tab" data-tab="habits"><span>Habit manager</span>${chev}</button>
           <button class="row" data-action="tips"><span>Usage tips</span>${chev}</button>
         </section>
@@ -1775,15 +1795,197 @@ function newId() {
 /* ---------- 7. Actions ---------- */
 
 /** After a count changes: a little buzz, a cheer when everything is done, and the memo if asked for. */
+/* Sounds: made here with Web Audio (no sound files). They play after a tap. */
+
+let audioCtx = null;
+
+/** Play bell-like notes: [frequency in Hz, start in seconds, length in seconds]. */
+function playNotes(notes, volume) {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!state.settings.sound || !AC) return;
+  try {
+    audioCtx = audioCtx || new AC();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime + 0.02;
+    const out = audioCtx.createGain();
+    out.gain.value = volume;
+    out.connect(audioCtx.destination);
+    notes.forEach(([freq, at, len]) => {
+      // Each note, plus a quieter one an octave higher: that makes it ring like a bell.
+      [[1, 1], [2, 0.22]].forEach(([times, level]) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = freq * times;
+        gain.gain.setValueAtTime(0.0001, t0 + at);
+        gain.gain.exponentialRampToValueAtTime(level, t0 + at + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + len);
+        osc.connect(gain);
+        gain.connect(out);
+        osc.start(t0 + at);
+        osc.stop(t0 + at + len + 0.05);
+      });
+    });
+  } catch (err) {
+    // No sound is fine.
+  }
+}
+
+/** A habit is done: three quick rising notes (C, E, G). */
+const chime = () => playNotes([[1046.5, 0, 0.6], [1318.5, 0.08, 0.6], [1568, 0.16, 0.9]], 0.18);
+
+/** Everything for today is done: the same notes, then a high C over a ringing chord. */
+const fanfare = () => playNotes([[1046.5, 0, 0.5], [1318.5, 0.09, 0.5], [1568, 0.18, 0.5],
+  [2093, 0.27, 1.6], [1318.5, 0.42, 1.4], [1568, 0.42, 1.4]], 0.14);
+
+/* The celebration when everything for today is done. */
+
+const party = document.getElementById('party');
+let partyTimer = 0;
+let partyThen = null; // runs when the celebration closes, for example a memo to write
+
+function celebrate(then) {
+  partyThen = then || null;
+  fanfare();
+  party.innerHTML = `
+    <canvas class="confetti" aria-hidden="true"></canvas>
+    <div class="party-words"><p class="pw1">WELL DONE!!</p><p class="pw2">YOU DID IT!!</p></div>
+    <button type="button" class="party-off">Don't show again</button>`;
+  if (!party.open) party.showModal();
+  party.focus({ preventScroll: true }); // focus the whole screen, not the small button
+  confetti(party.querySelector('.confetti'));
+  clearTimeout(partyTimer);
+  partyTimer = setTimeout(endParty, 5000);
+}
+
+function endParty() {
+  clearTimeout(partyTimer);
+  if (party.open) party.close();
+}
+
+// A tap anywhere closes it. "Don't show again" also turns it off (it can be turned on in Me → Settings).
+party.addEventListener('click', (e) => {
+  if (e.target.closest('.party-off')) {
+    state.settings.celebrate = false;
+    save();
+    toast('Turn it back on in Me → Settings');
+  }
+  endParty();
+});
+
+party.addEventListener('close', () => {
+  party.innerHTML = '';
+  const then = partyThen;
+  partyThen = null;
+  if (then) then();
+});
+
+/** Paper squares and little stars that flutter down for a few seconds. */
+function confetti(canvas) {
+  const ctx = canvas.getContext && canvas.getContext('2d');
+  if (!ctx) return;
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  const colors = ['#ff3d8b', '#ffc81e', '#2ba8e0'];
+  const count = still ? 50 : Math.min(240, Math.round((W * H) / 2600));
+  const bits = Array.from({ length: count }, (_, i) => ({
+    x: Math.random() * W,
+    y: still ? Math.random() * H : (Math.random() * 1.6 - 0.6) * H,
+    fall: 1.2 + Math.random() * 2.4,
+    drift: (Math.random() - 0.5) * 0.8,
+    size: 5 + Math.random() * 7,
+    turn: Math.random() * Math.PI * 2,
+    spin: (Math.random() - 0.5) * 0.16,
+    flip: Math.random() * Math.PI * 2,
+    star: i % 6 === 0,
+    color: colors[i % 3],
+  }));
+  const drawStar = (r) => {
+    ctx.beginPath();
+    for (let j = 0; j < 10; j++) {
+      const a = (j * Math.PI) / 5 - Math.PI / 2;
+      const rr = j % 2 ? r * 0.45 : r;
+      ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fill();
+  };
+  const started = performance.now();
+  const frame = (now) => {
+    if (!canvas.isConnected) return;
+    ctx.clearRect(0, 0, W, H);
+    bits.forEach((b) => {
+      if (!still) {
+        b.y += b.fall;
+        b.flip += 0.08;
+        b.x += b.drift + Math.sin(b.flip) * 0.5;
+        b.turn += b.spin;
+      }
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.turn);
+      if (b.star) {
+        ctx.fillStyle = colors[2];
+        drawStar(b.size * 0.55);
+      } else {
+        // The paper turns as it falls, so it looks thinner, then wider again.
+        const tall = b.size * (0.35 + 0.65 * Math.abs(Math.cos(b.flip)));
+        ctx.fillStyle = b.color;
+        ctx.fillRect(-b.size / 2, -tall / 2, b.size, tall);
+      }
+      ctx.restore();
+    });
+    if (!still && now - started < 5000) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+/* A small question with Cancel and Confirm, like an iPhone alert. */
+
+const askBox = document.getElementById('ask');
+let askYes = null;
+
+function ask(text, onYes) {
+  askYes = onYes;
+  askBox.innerHTML = `
+    <form method="dialog" class="ask-card">
+      <span class="ask-icon" aria-hidden="true">${ICON_SVG.warn}</span>
+      <p id="ask-text">${esc(text)}</p>
+      <div class="ask-btns">
+        <button value="no" class="ask-no">Cancel</button>
+        <button value="yes" class="ask-yes">Confirm</button>
+      </div>
+    </form>`;
+  askBox.returnValue = '';
+  askBox.showModal();
+}
+
+askBox.addEventListener('close', () => {
+  const yes = askBox.returnValue === 'yes' && askYes;
+  askYes = null;
+  if (yes) yes();
+});
+
+/** After a count changes: a buzz, a chime when a habit is finished, and confetti when the whole day is done. */
 function afterChange(h, before, after, k) {
   const finished = before < h.goal && after >= h.goal;
   if (navigator.vibrate) navigator.vibrate(finished ? 18 : 8);
   if (!finished) return;
-  if (k === todayKey()) {
-    const due = active().filter((x) => isDue(x, parseKey(k)));
-    if (due.length > 1 && due.every((x) => isDone(x, k))) toast('All done for today! 🎉');
-  }
-  if (h.memo) openMemo(h, k);
+  const memo = h.memo ? () => openMemo(h, k) : null;
+  const due = k === todayKey() ? active().filter((x) => isDue(x, parseKey(k))) : [];
+  if (due.length && due.every((x) => isDone(x, k))) {
+    if (state.settings.celebrate) {
+      celebrate(memo); // the memo opens when the celebration closes
+      return;
+    }
+    fanfare();
+    toast('All done for today! 🎉');
+  } else chime();
+  if (memo) memo();
 }
 
 /** The round button on Today: +1, or done/undo for once-a-day habits. */
@@ -1964,6 +2166,31 @@ document.addEventListener('click', (e) => {
       afterChange(h, before, before + 1, ui.date);
       break;
     }
+    case 'sub-one': {
+      if (!h) break;
+      const before = countOf(h, ui.date);
+      if (before < 1) break;
+      setCount(h, ui.date, before - 1);
+      render();
+      afterChange(h, before, before - 1, ui.date);
+      break;
+    }
+    case 'reset-day':
+      if (!h) break;
+      ask(`Do you want to reset this habit for ${ui.date === todayKey() ? 'today' : 'this day'}?`, () => {
+        setCount(h, ui.date, 0);
+        render();
+      });
+      break;
+    case 'set-sound':
+      state.settings.sound = el.checked;
+      save();
+      chime(); // a sample, when turned on
+      break;
+    case 'set-celebrate':
+      state.settings.celebrate = el.checked;
+      save();
+      break;
     case 'complete': {
       if (!h || ui.date > todayKey()) break;
       const before = countOf(h, ui.date);

@@ -242,8 +242,8 @@ main {
 }
 .sd-ring::before { content: ""; position: absolute; inset: 2.5px; border-radius: 50%; background: var(--bg); }
 .sd-ring b { position: relative; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.sd.full .sd-ring::before { background: var(--accent); }
-.sd.full .sd-ring b { color: var(--accent-ink); }
+.spark { position: absolute; top: -7px; right: -8px; font-size: 13px; font-style: normal; line-height: 1; pointer-events: none; }
+.cd .spark { top: -6px; right: -7px; font-size: 12px; }
 
 .hlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .hc {
@@ -277,7 +277,19 @@ main {
   padding: 14px 8px 14px 16px;
   text-align: left;
 }
-.hc-icon { flex: none; width: 32px; font-size: 27px; line-height: 1; text-align: center; }
+.hc-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 21px;
+  line-height: 1;
+  background: color-mix(in srgb, var(--c) 34%, var(--mix));
+}
+.hc.done .hc-icon { background: color-mix(in srgb, #000 16%, transparent); }
+.hc-streak { position: absolute; top: 7px; right: 14px; font-size: 10px; font-weight: 600; line-height: 1; white-space: nowrap; }
 .hc-body { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .hc-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hc-meta { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }
@@ -303,7 +315,8 @@ main {
   color: var(--text);
 }
 .hc-btn svg { width: 18px; height: 18px; }
-.hc.done .hc-btn { background: var(--ink); color: var(--c); }
+.hc.done .hc-btn { background: none; }
+.hc-btn .seal { width: 32px; height: 32px; }
 
 .rest-note { margin-top: 16px; text-align: center; font-size: 13px; color: var(--muted); }
 .empty-note { padding: 36px 12px; text-align: center; color: var(--muted); }
@@ -484,8 +497,23 @@ main {
   transform: translateY(-50%);
 }
 .ring-plus svg { width: 22px; height: 22px; }
+.ring-minus {
+  position: absolute;
+  top: 50%;
+  left: 15%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  transform: translateY(-50%);
+}
+.ring-minus svg { width: 22px; height: 22px; }
 .cnt-desc { margin-top: 8px; text-align: center; font-size: 15px; color: var(--muted); }
-.cnt-actions { display: flex; align-items: center; gap: 22px; margin-top: auto; padding-top: 28px; }
+.cnt-actions { display: grid; grid-template-columns: 42px auto 42px; align-items: center; gap: 22px; margin-top: auto; padding-top: 28px; }
+.reset-btn { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: var(--c); }
+.reset-btn svg { width: 22px; height: 22px; }
 .add-pill { min-width: 108px; height: 42px; padding: 0 26px; border-radius: 21px; background: var(--c); color: var(--ink); font-size: 16px; font-weight: 600; text-align: center; }
 .done-btn { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 22%, var(--mix)); color: var(--c); }
 .done-btn svg { width: 22px; height: 22px; }
@@ -918,6 +946,76 @@ textarea {
   color: var(--text);
   -webkit-appearance: none;
   appearance: none;
+}
+
+/* ---------- Celebration when everything for today is done ---------- */
+
+dialog.party {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+}
+dialog.party[open] { display: grid; place-items: center; animation: party-in 0.25s ease; }
+dialog.party::backdrop { background: transparent; }
+dialog.party:focus { outline: none; }
+/* The confetti falls in front of the words. */
+.confetti { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
+.party-words {
+  position: relative;
+  padding: 0 16px;
+  text-align: center;
+  font-family: "Avenir Next Condensed", "Futura", "Arial Narrow", system-ui, sans-serif;
+  font-size: clamp(38px, 12vw, 64px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  animation: party-pop 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.pw1 { color: #1fa5bd; }
+.pw2 { color: #ff6a1f; }
+.party-off {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 64px);
+  padding: 10px 16px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+@keyframes party-in { from { opacity: 0; } }
+@keyframes party-pop { from { opacity: 0; transform: scale(0.4) rotate(-6deg); } }
+
+dialog.ask {
+  width: min(300px, calc(100% - 48px));
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--text);
+}
+dialog.ask::backdrop { background: rgba(0, 0, 0, 0.6); }
+.ask-card { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 18px 18px; text-align: center; }
+.ask-icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, #ffcc00 18%, var(--mix)); color: #ffcc00; }
+.ask-icon svg { width: 24px; height: 24px; }
+.ask-card p { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.ask-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.ask-btns button { height: 40px; border-radius: 12px; font-size: 15px; font-weight: 600; text-align: center; }
+.ask-no { background: var(--card-2); }
+.ask-yes { background: var(--accent); color: var(--accent-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.party[open], .party-words { animation: none; }
 }
 
 /* ---------- Toast ---------- */

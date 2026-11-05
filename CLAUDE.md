@@ -50,7 +50,8 @@ Still there from v2: reminders, and a mood and note for each day.
 - Data shape (version 4; v4 only changed the default week start to Saturday): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,
   days: [0-6], time: any|morning|afternoon|evening, group, reminder: "HH:MM" or "", memo, archived,
   createdAt }], log: { habitId: { "YYYY-MM-DD": count } }, memos: { habitId: { "YYYY-MM-DD": { text, emoji } } },
-  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart: 6 Sat | 0 Sun | 1 Mon, name, avatar } }`.
+  journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart: 6 Sat | 0 Sun | 1 Mon, name, avatar, sound, celebrate } }`
+  (sound and celebrate are true unless turned off).
   The owner's family is Muslim and their week starts on Saturday, so that is the default.
   Keep `normalize()` able to read older data so people's habits are never lost.
 
@@ -71,15 +72,20 @@ Still there from v2: reminders, and a mood and note for each day.
   (`#f0436a` in light mode). Habit colours are mixed with `--mix` (black, or white in light mode).
 - Today: pink **All ▾** filter pill on the left, title in the middle, a sun/moon light-dark button and
   the mood face on the right;
-  a row of days (two-letter day name over a ring that fills pink, selected day boxed); habit cards
-  tinted 20% with the habit's colour that fill as you go (`--p`), a "0/1" chip, the description,
-  and a round check (or +) button. A 💡 tips button floats bottom-left.
-- Habit counter page: big ring with the emoji, count and "/goal", a + inside the ring, an **Add**
-  pill (opens the keypad) and a check button in the habit's colour, Memo and Stat buttons below.
+  a row of days (two-letter day name over a ring that fills pink, selected day boxed, a ✨ on a finished
+  day); habit cards tinted 20% with the habit's colour that fill as you go (`--p`), the emoji in a rounded
+  box, a "0/1" chip, the description, "🔥 N Days" in the top corner, and a round check (or +) button that
+  becomes a green seal (`SEAL_SVG`) when done. A 💡 tips button floats bottom-left.
+- Finishing a habit plays a chime; finishing the last habit of the day opens the celebration (`celebrate()`,
+  `<dialog id="party">`: confetti on a canvas, "WELL DONE!! YOU DID IT!!", "Don't show again") with a bigger
+  sound. Sounds are made with Web Audio in `playNotes()` (no sound files; iPhone's silent switch mutes them).
+- Habit counter page: big ring with the emoji, count and "/goal", + and − inside the ring, an **Add**
+  pill (opens the keypad) between ↺ reset (asks first with `ask()`, `<dialog id="ask">`) and a check button
+  in the habit's colour, Memo and Stat buttons below.
 - Habit Stat page: month calendar, Yearly status grid, 8 coloured tiles, Memos, Trending
   (1 Week / 1 Month / 1 Year) and Comparison (last week vs this week) bar charts.
-- Stats: "Overall ▾" picker and a row of habit emoji chips, month calendar with progress rings
-  (or the whole year), a pink rate ring with ⇄ for month or year, and four numbers.
+- Stats: "Overall ▾" picker and a row of habit emoji chips, month calendar with progress rings and ✨ on
+  finished days (or the whole year), a pink rate ring ("20%", "Monthly Rate") with ⇄ for month or year, and four numbers.
 - Me: avatar and name, Moods week (dashed circles), a gradient Daily quote card, Settings cards.
 - Unit picker (from the form's Unit row): pink kind chips (Popular first, then Activity, Body Measurements,
   Nutrition Intake, Workout, Mind & Sleep, Study & Work, Faith, Self-care, Home & Money, Family & Friends, Other),
