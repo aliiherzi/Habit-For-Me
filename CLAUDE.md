@@ -100,8 +100,10 @@ Still there from v2: reminders, and a mood and note for each day.
 - New Habit page (the pink +): `TEMPLATE_TABS` (Popular, Faith, Health, Sports, Lifestyle, Time, Quit), rows with
   emoji, name, goal and +, and a floating **Custom Habit** button for the blank form.
 - Timer page (habits in `min`/`hr`, today only): full ring in the habit's colour with a white knob that goes round
-  once a minute, the clock, play/pause pill and + (add by hand), and Counter (Style), Sound, Countdown, Memo, Stat.
-  Focus and end sounds are made in `focusBuffer()`/`endSound()`.
+  once a minute, the clock, ↺ reset (asks first), play/pause pill and + (add by hand), and Counter (Style),
+  Sound, Countdown, Memo, Stat. Countdown (`openCountdown`) picks count down/up and the length (5m-2h), which
+  sets the goal (an `hr` habit switches to `min`). Once the goal is done, ▶ runs another full round
+  (`timerTarget`). Focus and end sounds are made in `focusBuffer()`/`endSound()`.
 - Group tab: shared habits with your row and each friend's (7 dots and streak), Remind, My progress, Invite.
   There is no server: links (`#h=` + base64 JSON with the habit and the sender's last 7 days) go by WhatsApp or
   the share sheet; opening one adds the habit or updates that friend. iPhone home-screen apps have their own

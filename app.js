@@ -917,7 +917,7 @@ function renderCounter(h) {
   const foot = [
     timed ? fb('style', 'style', ICON_SVG.clock, timerView ? 'Counter' : 'Timer') : '',
     timerView ? fb('sound', 'sound', ICON_SVG.note, 'Sound') : '',
-    timerView ? fb('count-mode', 'watch', ICON_SVG.watch, ui.countUp ? 'Count up' : 'Countdown') : '',
+    timerView ? fb('countdown', 'watch', ICON_SVG.watch, 'Countdown') : '',
     fb('memo', 'memo', ICON_SVG.memo, 'Memo'),
     fb('stat', 'stat', ICON_SVG.bars, 'Stat'),
   ].filter(Boolean).join('');
@@ -949,7 +949,7 @@ function renderCounter(h) {
       ${h.desc ? `<p class="cnt-desc">${esc(h.desc)}</p>` : ''}
       ${rule}
       <div class="cnt-actions">
-        <span class="reset-btn" aria-hidden="true"></span>
+        ${c > 0 || t.running ? `<button class="reset-btn" data-action="reset-day" ${id} aria-label="Reset today's time to 0">${ICON_SVG.undo}</button>` : '<span class="reset-btn" aria-hidden="true"></span>'}
         <button class="add-pill play" data-action="timer" ${id} aria-label="${t.running ? 'Pause the timer' : 'Start the timer'}">${t.running ? ICON_SVG.pause : ICON_SVG.play}</button>
         <button class="done-btn" data-action="keypad" ${id} aria-label="Add time by hand">${ICON_SVG.plus}</button>
       </div>
@@ -2254,16 +2254,30 @@ function secsDone(h, k) {
 }
 
 /** What the timer page shows: the clock, a line under it, and where the knob on the ring is. */
+/**
+ * Where a timer stops (in seconds done today): at the goal, and once the goal is done, after one
+ * more full round of the same length, so ▶ always starts a fresh countdown. A quit habit stops at
+ * its limit and after that keeps counting how far over it is (Infinity: no stop).
+ */
+function timerTarget(h, from) {
+  const goal = h.goal * unitSecs(h);
+  if (h.type === 'quit') return from < goal ? goal : Infinity;
+  return (Math.floor(from / goal + 1e-9) + 1) * goal;
+}
+
 function timerState(h) {
+  const t = timers[h.id];
   const done = secsDone(h, todayKey());
-  const left = h.goal * unitSecs(h) - done;
-  const down = !ui.countUp && left > 0;
-  const clock = ui.countUp ? fmtClock(done) : left > 0 ? fmtClock(left) : `+${fmtClock(-left)}`;
+  const goal = h.goal * unitSecs(h);
+  const target = timerTarget(h, t ? t.from : done);
+  const over = target === Infinity;
+  const left = target - done;
+  const clock = ui.countUp ? fmtClock(done) : over ? `+${fmtClock(done - goal)}` : fmtClock(left);
   // The knob goes round once a minute: backwards while counting down, forwards when counting up.
-  const sec = Math.floor(ui.countUp ? done : Math.abs(left)) % 60;
-  const knob = down ? -((60 - sec) % 60) * 6 : sec * 6;
-  const sub = `${fmtAmount(h, done / unitSecs(h))} of ${fmtAmount(h, h.goal)}${h.type === 'quit' ? ' allowed' : ''}`;
-  return { clock, sub, knob, running: Boolean(timers[h.id]) };
+  const sec = Math.floor(ui.countUp ? done : over ? done - goal : left) % 60;
+  const knob = !ui.countUp && !over ? -((60 - sec) % 60) * 6 : sec * 6;
+  const sub = `${fmtAmount(h, done / unitSecs(h))} of ${fmtAmount(h, h.goal)}${h.type === 'quit' ? ' allowed' : done >= goal ? ' ✓' : ''}`;
+  return { clock, sub, knob, running: Boolean(t) };
 }
 
 function startTimer(h) {
@@ -2287,13 +2301,19 @@ function stopTimer(h) {
 }
 
 /** The goal (or a quit habit's limit) is reached: stop right on it and play the end sound. */
-function finishTimer(h) {
-  const t = timers[h.id];
+/** Stops a timer without saving its time (for reset). */
+function cancelTimer(h) {
+  if (!timers[h.id]) return;
   delete timers[h.id];
   saveTimers();
   if (!Object.keys(timers).length) stopFocusSound();
+}
+
+function finishTimer(h, target) {
+  const t = timers[h.id];
+  cancelTimer(h);
   const before = countOf(h, t.key);
-  const after = Math.max(before, h.goal);
+  const after = Math.min(MAX_COUNT, Math.max(before, Math.round((target / unitSecs(h)) * 10000) / 10000));
   setCount(h, t.key, after);
   endSound();
   if (document.hidden) remind(h, h.type === 'quit' ? 'You reached your limit for today.' : "Time's up. Well done!");
@@ -2311,7 +2331,10 @@ function timerTick() {
     if (!h || !isTimeHabit(h)) {
       delete timers[id];
       saveTimers();
-    } else if (t.from < h.goal * unitSecs(h) && secsDone(h, t.key) >= h.goal * unitSecs(h)) finishTimer(h);
+    } else {
+      const target = timerTarget(h, t.from);
+      if (secsDone(h, t.key) >= target) finishTimer(h, target);
+    }
   }
   const h = ui.detail && !ui.stat && findHabit(ui.detail);
   if (h && view.querySelector('.counter.timer')) {
@@ -2407,6 +2430,33 @@ function openSoundSheet(tab) {
       </div>
       <p class="f-hint">${tab === 'focus' ? 'Plays while the timer runs.' : 'Plays when the time is up.'}${s.sound ? '' : ' Sounds are turned off in Me → Settings.'}</p>
     </div>`);
+}
+
+const TIMER_LENGTHS = [5, 10, 15, 20, 25, 30, 45, 60, 90, 120]; // minutes
+
+function openCountdown(h) {
+  const now = h.goal * (unitSecs(h) / 60);
+  showSheet(`
+    <div class="countdown-sheet">
+      <div class="sheet-head">${closeBtn}<h2 id="sheet-title">Countdown</h2><span class="round-gap" aria-hidden="true"></span></div>
+      ${segButtons('count-dir', [['down', 'Count down'], ['up', 'Count up']], ui.countUp ? 'up' : 'down', 'Count down or up')}
+      <p class="f-label pad">How long</p>
+      <div class="len-chips" role="group" aria-label="How long">
+        ${TIMER_LENGTHS.map((m) => `<button type="button" class="pchip${m === now ? ' on' : ''}" data-action="timer-length" data-id="${esc(h.id)}" data-value="${m}" aria-pressed="${m === now}">${fmtAmount({ unit: 'min' }, m)}</button>`).join('')}
+      </div>
+      <p class="f-hint">${h.type === 'quit' ? 'The time you allow yourself each day.' : 'Your goal for the day. When it is done, ▶ starts another round of the same length.'} To type another length, use ••• → Edit.</p>
+    </div>`);
+}
+
+/** Sets a timed habit's goal in minutes. An hours habit switches to minutes for lengths like 30m. */
+function setTimerLength(h, minutes) {
+  if (h.unit === 'hr' && minutes % 60) {
+    h.unit = 'min';
+    const log = state.log[h.id] || {};
+    for (const k of Object.keys(log)) log[k] = Math.min(MAX_COUNT, Math.round(log[k] * 60 * 10000) / 10000);
+  }
+  h.goal = h.unit === 'hr' ? minutes / 60 : minutes;
+  save();
 }
 
 /* ---------- The New Habit page: ready-made habits ---------- */
@@ -2838,9 +2888,19 @@ document.addEventListener('click', (e) => {
       ui.countView = !ui.countView;
       render();
       break;
-    case 'count-mode':
-      ui.countUp = !ui.countUp;
+    case 'countdown':
+      if (h) openCountdown(h);
+      break;
+    case 'count-dir':
+      ui.countUp = value === 'up';
       render();
+      if (findHabit(ui.detail)) openCountdown(findHabit(ui.detail));
+      break;
+    case 'timer-length':
+      if (!h) break;
+      setTimerLength(h, Number(value));
+      render();
+      openCountdown(h);
       break;
     case 'sound':
       openSoundSheet('focus');
@@ -2969,6 +3029,7 @@ document.addEventListener('click', (e) => {
     case 'reset-day':
       if (!h) break;
       ask(`Do you want to reset this habit for ${ui.date === todayKey() ? 'today' : 'this day'}?`, () => {
+        cancelTimer(h);
         setCount(h, ui.date, 0);
         render();
       });

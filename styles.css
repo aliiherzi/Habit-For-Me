@@ -996,6 +996,10 @@ textarea {
 .sound-sheet .u-row.on { color: var(--accent); font-weight: 600; }
 .sound-sheet .u-row.on svg { width: 18px; height: 18px; color: var(--accent); }
 .sound-sheet .f-hint { margin-top: 12px; }
+.countdown-sheet .seg { display: flex; margin-bottom: 18px; }
+.countdown-sheet .seg button { flex: 1; padding: 8px 10px; font-size: 14px; }
+.len-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+.len-chips .pchip { min-width: 64px; padding: 9px 14px; font-size: 15px; text-align: center; }
 
 /* ---------- Group: habits with friends ---------- */
 
