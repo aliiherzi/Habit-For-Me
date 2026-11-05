@@ -46,7 +46,8 @@ Still there from v2: reminders, and a mood and note for each day.
   Don't name a global function `top`, `name` or `status`: the browser already uses those names.
 - `styles.css`: colour tokens on `:root` (light), dark tokens under `prefers-color-scheme` and
   `[data-theme="dark"]`. Bigger screens at 640px (tablet) and 900px (iPad landscape, laptop).
-- `icons/`: the logo is the seedling picture the owner chose (Nov 2026), centred on a black square:
+- `icons/`: the logo is the seedling picture the owner chose (Nov 2026), cut out of its black background
+  and centred on a white square:
   180 (iPhone), 192 (Android and the browser tab), 512, and maskable 512 with the plant smaller. The source
   picture is only 225×272, so the 512 sizes are a little soft. Phones keep an old icon until the app is added
   to the home screen again. (Our own drawn seedling, `icon.svg`, is in the git history if ever needed.)
