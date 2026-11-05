@@ -42,7 +42,7 @@ Check off your habits every day, build streaks, and see your progress.
 - [x] Fits every screen: phones, tablets and iPads, and laptops
 - [x] Dark look by default, a sun/moon button on Today to switch to light, and Auto in Me → Settings
 - [x] Works offline and installs on your phone's home screen like an app
-- [x] Seedling logo 🌱 on a white background (home screen and browser tab)
+- [x] Seedling logo 🌱 on a black background (home screen and browser tab)
 - [x] Backup and restore (download your data as a file, load it on another device)
 
 ## Look and feel
