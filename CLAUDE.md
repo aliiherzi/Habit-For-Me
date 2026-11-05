@@ -27,7 +27,8 @@ Still there from v2: reminders, and a mood and note for each day.
    settings (visibility, Pages), but pushing `gh-pages` is enough to publish.
 5. **Look:** the owner wants Habit For Me to look like the **Habit Tracker** app by Davetech
    (App Store), which they use on their Mac. Follow its layout, colours, screens and menu.
-   Keep our own name, icon and artwork: no copied images, logos or premium/paywall screens.
+   Keep our own name and artwork, not the Habit Tracker app's: no copied images, logos or premium/paywall
+   screens. The app icon is the seedling picture the owner chose.
    The owner's screen recording of it is in their Google Drive
    ("Screen Recording 2026-11-04 at 20.03.00.mov", 368 MB, too big for the Drive connector).
    They also shared 28 iPhone screenshots (Drive folder "whatsapp unknown"), which v3 follows.
@@ -45,10 +46,10 @@ Still there from v2: reminders, and a mood and note for each day.
   Don't name a global function `top`, `name` or `status`: the browser already uses those names.
 - `styles.css`: colour tokens on `:root` (light), dark tokens under `prefers-color-scheme` and
   `[data-theme="dark"]`. Bigger screens at 640px (tablet) and 900px (iPad landscape, laptop).
-- `icons/`: our own seedling logo (two green leaves on a curved stem, black background), drawn in
-  `icon.svg` (rounded, for browser tabs). The PNGs are made from the same drawing on a square black
-  background: 180 (iPhone), 192 and 512, and maskable 512 with the drawing at 80% size. Phones keep an
-  old icon until the app is added to the home screen again.
+- `icons/`: the logo is the seedling picture the owner chose (Nov 2026), centred on a black square:
+  180 (iPhone), 192 (Android and the browser tab), 512, and maskable 512 with the plant smaller. The source
+  picture is only 225×272, so the 512 sizes are a little soft. Phones keep an old icon until the app is added
+  to the home screen again. (Our own drawn seedling, `icon.svg`, is in the git history if ever needed.)
 - `sw.js`: network-first offline cache. **Bump `CACHE` and update `FILES`** when adding,
   renaming or removing files.
 - Data shape (version 4; v4 only changed the default week start to Saturday): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,

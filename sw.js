@@ -1,14 +1,13 @@
 // Service worker: lets Habit For Me open without internet.
 // It tries the network first (so updates show up), and falls back to the saved copy when offline.
 // Change CACHE when you add new files so old copies are cleaned up.
-const CACHE = 'habit-for-me-v5';
+const CACHE = 'habit-for-me-v6';
 const FILES = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './manifest.webmanifest',
-  './icons/icon.svg',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
