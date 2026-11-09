@@ -55,7 +55,8 @@ Still there from v2: reminders, and a mood and note for each day.
 - Data shape (version 4; v4 only changed the default week start to Saturday): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,
   days: [0-6], time: any|morning|afternoon|evening, group, reminder: "HH:MM" or "", memo, archived,
   createdAt (also the start date), endDate ("" = no end), period: day|week|month|days, every (2-30, for days),
-  reminders: ["HH:MM", ≤5] (reminder = the first), remindText, type: build|quit (quit: goal is a limit, 0-999, done while count <= goal),
+  reminders: ["HH:MM", ≤5] (reminder = the first), remindText, superAlert, ringtone (RINGTONES),
+  place: { name, lat, lng, r, on: arrive|leave } or null, type: build|quit (quit: goal is a limit, 0-999, done while count <= goal),
   shareId, friends: [names], friendStats: { name: { day, week: "1101-01", streak, at } } }], log: { habitId: { "YYYY-MM-DD": count } }, memos: { habitId: { "YYYY-MM-DD": { text, emoji } } },
   journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart: 6 Sat | 0 Sun | 1 Mon, name, avatar, sound, celebrate, focusSound, endSound } }`
   (sound and celebrate are true unless turned off). Counts of habits in `min`/`hr` can have up to
@@ -114,6 +115,11 @@ Still there from v2: reminders, and a mood and note for each day.
   (counted from createdAt) holding day k; `periodCount` sums it and `isDone`/`dayShare` use it, so every day of
   a met period counts as done. Streaks count periods ("🔥 2 Weeks"). Week/month/days habits use all days and the
   counter, not the timer (`usesTimer`). Cards show the period's total and "This week".
+- Super Alert (`openAlarm`, `<dialog id="alarm">`): full-screen time and habit, the ringtone (`ring()`) every 2.5 s
+  until Stop or Remind later (snooze 10 min in localStorage `habit-for-me:snooze`). If the app is hidden it sends
+  a notification that stays, and rings when the app is opened. It can't ring through Silent mode or when closed.
+- Location reminders: form + → Reminder type (Time / Location) → panel with "Use where I am now", radius and
+  Arriving/Leaving. `watchPlaces()` follows the position only while the app is open; once a day per habit.
 - Complete all: a pill under Today's list (when habits are left) opens a sheet to tick many at once.
 - Group tab: shared habits with your row and each friend's (7 dots and streak), Remind, My progress, Invite.
   There is no server: links (`#h=` + base64 JSON with the habit and the sender's last 7 days) go by WhatsApp or

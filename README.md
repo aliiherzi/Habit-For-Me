@@ -47,6 +47,9 @@ Check off your habits every day, build streaks, and see your progress.
 - [x] Habit term: a start date and an optional end date
 - [x] Several reminder times for one habit, and your own reminder message
 - [x] Complete all: tick off many of the day's habits at once
+- [x] Super Alert: a full-screen alarm that rings until you tap Stop or Remind later (10 minutes)
+- [x] Location reminders: when you arrive at or leave a saved place (while the app is open)
+- [x] Ringtones for reminders: Default, Drum, Universe, Chord, Ding, Rhythm
 - [x] Backup and restore (download your data as a file, load it on another device)
 
 ## Look and feel

@@ -984,6 +984,35 @@ textarea {
 .term-line { flex: 1; height: 1px; margin-bottom: 16px; background: var(--line); }
 .date-chip { max-width: 150px; padding: 6px 10px; border: 0; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600; }
 
+/* ---------- Super Alert, location and ringtone (form) ---------- */
+
+.qmark { width: 18px; height: 18px; margin-left: 4px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--card-2); color: var(--muted); font-size: 11px; font-weight: 700; vertical-align: 1px; }
+.ring-pick { padding: 6px 10px; border: 0; border-radius: 10px; background: var(--card-2); font-size: 14px; }
+.place-open { padding: 6px 4px 6px 12px; font-size: 13px; font-weight: 600; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.mini-panel { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0.45); }
+.mini-card { width: 100%; padding: 16px 16px calc(env(safe-area-inset-bottom) + 18px); border-radius: 20px 20px 0 0; background: var(--sheet); text-align: center; }
+.mini-card h3 { margin: 6px 0 8px; font-size: 20px; }
+.mini-card p { margin: 0 0 10px; line-height: 1.45; }
+.mini-head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; margin-bottom: 14px; }
+.mini-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mini-btns .ga-btn { width: 100%; margin: 0; }
+.ga-btn.green { background: var(--accent); color: var(--accent-ink); }
+.alarm-art { font-size: 64px; }
+.place-panel { overflow-y: auto; }
+.place-here { margin-top: 4px; }
+.place-where { margin: 4px 0 6px; text-align: center; }
+.len-chips .pchip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+dialog.alarm { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; }
+dialog.alarm[open] { display: grid; place-items: center; }
+dialog.alarm::backdrop { background: #000; }
+.alarm-in { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(360px, 100%); padding: 24px; text-align: center; }
+.alarm-time { font-size: clamp(64px, 22vw, 96px); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+.alarm-habit { display: flex; align-items: center; gap: 10px; font-size: 20px; }
+.alarm-msg { margin-bottom: 18px; color: rgba(255, 255, 255, 0.7); }
+.alarm-later { width: 100%; height: 52px; border-radius: 26px; background: var(--c, #fd5c7d); color: var(--ink, #fff); font-size: 17px; font-weight: 600; text-align: center; }
+.alarm-stop { width: 100%; height: 52px; border-radius: 26px; background: #2a2a2a; color: #fff; font-size: 17px; font-weight: 600; text-align: center; }
+
 /* ---------- Complete all ---------- */
 
 .complete-all { display: flex; margin: 16px auto 0; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 18px; background: var(--card-2); font-size: 13px; font-weight: 600; }

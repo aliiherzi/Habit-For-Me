@@ -87,6 +87,8 @@ const TEMPLATE_TABS = [
 // Sounds for the timer, made in the app (no sound files): [id, label, emoji].
 const FOCUS_SOUNDS = [['silent', 'Silent', '🔇'], ['tick', 'Tick', '🕐'], ['rain', 'Rain', '🌧️'], ['waves', 'Waves', '🌊'],
   ['fire', 'Fire', '🔥'], ['noise', 'Soft noise', '🌫️']];
+// Reminder ringtones, made in the app: [id, label].
+const RINGTONES = [['default', 'Default'], ['drum', 'Drum'], ['universe', 'Universe'], ['chord', 'Chord'], ['ding', 'Ding'], ['rhythm', 'Rhythm']];
 const END_SOUNDS = [['bell', 'Bell', '🔔'], ['chime', 'Chime', '🎵'], ['silent', 'Silent', '🔇']];
 const MOODS = [
   { emoji: '😞', label: 'Awful' },
@@ -336,6 +338,15 @@ function clampInt(v, min, max, fallback) {
 
 const cleanText = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+/** A saved place for a location reminder, or null. */
+function cleanPlace(v) {
+  if (!v || typeof v !== 'object') return null;
+  const lat = Number(v.lat);
+  const lng = Number(v.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { name: cleanText(v.name, 30) || 'My place', lat, lng, r: clampInt(v.r, 50, 5000, 200), on: v.on === 'leave' ? 'leave' : 'arrive' };
+}
+
 /** A friend's last progress for a shared habit: { name: { day, week: "1101-01", streak, at } }. */
 function cleanFriendStats(raw) {
   const out = {};
@@ -376,6 +387,9 @@ function normalize(raw) {
           // Reminder times (up to 5); reminder is the first, "" means none. remindText: your own message.
           reminders: [...new Set((Array.isArray(h.reminders) ? h.reminders : [h.reminder]).filter((t) => TIME_RE.test(t)))].sort().slice(0, 5),
           remindText: cleanText(h.remindText, 80),
+          superAlert: h.superAlert === true, // ring like an alarm until stopped
+          ringtone: RINGTONES.some(([id]) => id === h.ringtone) ? h.ringtone : 'default',
+          place: cleanPlace(h.place), // location reminder: { name, lat, lng, r (metres), on: arrive|leave } or null
           // Goal period: day, week, month, or every N days ("days", every 2-30).
           period: ['week', 'month', 'days'].includes(h.period) ? h.period : 'day',
           every: clampInt(h.every, 2, 30, 2),
@@ -1583,6 +1597,9 @@ function goalLabel(quit, period, every) {
   return `${quit ? 'Allowed' : 'Goal'} ${per}`;
 }
 
+/** The location reminder in the form: a chip with the place, tap to change, × to remove. */
+const placeChip = (pl) => `<span class="rem-chip place-chip"><button type="button" class="place-open" data-action="place-open">📍 ${esc(pl.name)} · ${pl.on === 'leave' ? 'Leaving' : 'Arriving'}</button><button type="button" class="rem-x" data-action="place-remove" aria-label="Remove the location reminder">${ICON_SVG.close}</button></span>`;
+
 /** One reminder time in the form, with a button to take it away. */
 const remTimeHtml = (t) => `<span class="rem-chip"><input type="time" name="reminder" value="${t}" class="time-chip" aria-label="Reminder time"><button type="button" class="rem-x" data-action="remove-time" aria-label="Remove this time">${ICON_SVG.close}</button></span>`;
 
@@ -1643,6 +1660,9 @@ function openSheet(h, preset) {
     endDate: '',
     reminders: [],
     remindText: '',
+    superAlert: false,
+    ringtone: 'default',
+    place: null,
     days: p.days || ALL_DAYS,
     time: 'any',
     group: '',
@@ -1746,8 +1766,11 @@ function openSheet(h, preset) {
       <section class="fcard">
         <div class="f-row"><span id="rem-label">Reminder</span><label class="switch"><input type="checkbox" name="remind" ${v.reminder ? 'checked' : ''} aria-labelledby="rem-label"><span aria-hidden="true"></span></label></div>
         <div class="rem-time"${v.reminder ? '' : ' hidden'}>
-          <div class="f-row"><span>Time</span><button type="button" class="add-time" data-action="add-time" aria-label="Add another time">${ICON_SVG.plus}</button></div>
-          <div class="rem-times">${(v.reminders.length ? v.reminders : ['08:00']).map(remTimeHtml).join('')}</div>
+          <div class="f-row"><span id="sa-label">Super Alert <button type="button" class="qmark" data-action="super-info" aria-label="What is Super Alert?">?</button></span><label class="switch"><input type="checkbox" name="superAlert" ${v.superAlert ? 'checked' : ''} aria-labelledby="sa-label"><span aria-hidden="true"></span></label></div>
+          <div class="f-row"><span>Time</span><button type="button" class="add-time" data-action="reminder-type" aria-label="Add a reminder: time or location">${ICON_SVG.plus}</button></div>
+          <div class="rem-times">${(v.reminders.length || v.place ? v.reminders : ['08:00']).map(remTimeHtml).join('')}${v.place ? placeChip(v.place) : ''}</div>
+          <input type="hidden" name="place" value="${esc(v.place ? JSON.stringify(v.place) : '')}">
+          <label class="f-row"><span>Ringtone</span><select name="ringtone" class="ring-pick" aria-label="Ringtone">${RINGTONES.map(([id, label]) => `<option value="${id}" ${(v.ringtone || 'default') === id ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
           <input type="text" name="remindText" maxlength="80" value="${esc(v.remindText)}" placeholder="Reminder message (optional)" class="rem-text" autocomplete="off" aria-label="Reminder message">
           <p class="f-hint">You get a notification while Habit For Me is open. For reminders when it's closed, use <strong>Add reminder to calendar</strong> in the habit's ••• menu.</p>
         </div>
@@ -1958,6 +1981,7 @@ sheet.addEventListener('change', (e) => {
     }
     if (name === 'color') setFormColor(form, e.target.value);
     if (name === 'remind') form.querySelector('.rem-time').hidden = !e.target.checked;
+    if (name === 'ringtone') ring(e.target.value);
     if (name === 'days') updateDaysNote(form);
   }
   if (form.id === 'memo-form' && name === 'date') {
@@ -2124,6 +2148,9 @@ sheet.addEventListener('submit', (e) => {
     reminders: fd.get('remind') ? times : [],
     reminder: fd.get('remind') ? times[0] || '' : '',
     remindText: String(fd.get('remindText') || '').trim().slice(0, 80),
+    superAlert: Boolean(fd.get('superAlert')),
+    ringtone: RINGTONES.some(([id]) => id === fd.get('ringtone')) ? String(fd.get('ringtone')) : 'default',
+    place: fd.get('remind') ? cleanPlace((() => { try { return JSON.parse(String(fd.get('place') || 'null')); } catch (err) { return null; } })()) : null,
     period,
     every: clampInt(fd.get('every'), 2, 30, 2),
     endDate,
@@ -2138,7 +2165,11 @@ sheet.addEventListener('submit', (e) => {
   sheet.close();
   render();
   toast(existing ? 'Habit updated' : `${data.icon} ${data.name} added`);
-  if (data.reminder) askNotifications();
+  if (data.reminder || data.place) askNotifications();
+  // You set the place where you are standing: count as already there, so it rings next time you arrive.
+  const saved = existing || state.habits[state.habits.length - 1];
+  if (data.place) inside[saved.id] = true;
+  watchPlaces();
 });
 
 // Tapping the dark area outside the sheet closes it.
@@ -2172,8 +2203,8 @@ function audio() {
 }
 
 /** Play bell-like notes: [frequency in Hz, start in seconds, length in seconds]. */
-function playNotes(notes, volume) {
-  if (!state.settings.sound || !audio()) return;
+function playNotes(notes, volume, force) {
+  if ((!state.settings.sound && !force) || !audio()) return;
   try {
     const t0 = audioCtx.currentTime + 0.02;
     const out = audioCtx.createGain();
@@ -2561,6 +2592,19 @@ function stopFocusSound() {
 
 const tickSound = () => playNotes([[1900, 0, 0.03]], 0.05);
 
+/** One ring of a reminder ringtone (an alarm repeats it). */
+function ring(name) {
+  const tones = {
+    default: [[1046.5, 0, 0.5], [1318.5, 0.12, 0.5], [1568, 0.24, 0.8]],
+    drum: [[110, 0, 0.25], [110, 0.3, 0.25], [165, 0.6, 0.35], [110, 0.9, 0.25]],
+    universe: [[1568, 0, 0.9], [2093, 0.15, 0.9], [2637, 0.3, 0.9], [3136, 0.45, 1.2]],
+    chord: [[523.25, 0, 1.4], [659.25, 0, 1.4], [783.99, 0, 1.4], [1046.5, 0, 1.4]],
+    ding: [[1760, 0, 1.2], [1760, 0.6, 1.2]],
+    rhythm: [[880, 0, 0.15], [880, 0.2, 0.15], [1175, 0.4, 0.15], [880, 0.8, 0.15], [1175, 1, 0.3]],
+  };
+  playNotes(tones[name] || tones.default, 0.2, true);
+}
+
 /** The sound when a timer's time is up. */
 function endSound(name = state.settings.endSound) {
   if (name === 'bell') playNotes([[880, 0, 2.2], [1320, 0, 1.4], [880, 0.8, 2.2], [1320, 0.8, 1.4]], 0.14);
@@ -2906,6 +2950,188 @@ function tick(h) {
   afterChange(h, c, next, k);
 }
 
+/* ---------- Location reminders ---------- */
+
+function openPlacePanel() {
+  const form = sheet.querySelector('#habit-form');
+  let pl = null;
+  try {
+    pl = cleanPlace(JSON.parse(form.elements.place.value || 'null'));
+  } catch (err) {
+    pl = null;
+  }
+  const r = pl ? pl.r : 200;
+  const on = pl ? pl.on : 'arrive';
+  sheet.insertAdjacentHTML('beforeend', `
+    <div class="unit-panel place-panel" ${pl ? `data-lat="${pl.lat}" data-lng="${pl.lng}"` : ''} role="group" aria-label="Choose a location">
+      <div class="sheet-head">
+        <button type="button" class="round" data-action="unit-close" aria-label="Back to the habit">${ICON_SVG.close}</button>
+        <h2>Choose a location</h2><span class="round-gap" aria-hidden="true"></span>
+      </div>
+      <section class="fcard">
+        <label class="f-row"><span>Name</span><input type="text" class="place-name" maxlength="30" value="${esc(pl ? pl.name : '')}" placeholder="Masjid, Home, Gym…" autocomplete="off"></label>
+      </section>
+      <button type="button" class="ga-btn green place-here" data-action="place-here">📍 Use where I am now</button>
+      <p class="place-where f-hint">${pl ? `Saved: ${pl.lat.toFixed(5)}, ${pl.lng.toFixed(5)}` : 'Go to the place (or be there), then tap the button.'}</p>
+      <p class="f-label pad">Remind me within</p>
+      <div class="len-chips">${[100, 200, 500, 1000].map((m) => `<button type="button" class="pchip" data-action="place-r" data-value="${m}" aria-pressed="${m === r}">${m < 1000 ? `${m} m` : '1 km'}</button>`).join('')}</div>
+      <div class="len-chips">${[['arrive', 'Arriving'], ['leave', 'Leaving']].map(([v2, l]) => `<button type="button" class="pchip" data-action="place-on" data-value="${v2}" aria-pressed="${v2 === on}">${l}</button>`).join('')}</div>
+      <p class="f-hint">Works while Habit For Me is open: phones don't let web apps check your location when they are closed.</p>
+      <button type="button" class="save-btn" data-action="place-save">Confirm</button>
+    </div>`);
+}
+
+function findMe(btn) {
+  const panel = btn.closest('.unit-panel');
+  const where = panel.querySelector('.place-where');
+  if (!navigator.geolocation) {
+    where.textContent = "This browser can't find your location.";
+    return;
+  }
+  where.textContent = 'Finding you…';
+  navigator.geolocation.getCurrentPosition((pos) => {
+    panel.dataset.lat = pos.coords.latitude;
+    panel.dataset.lng = pos.coords.longitude;
+    where.textContent = `Found: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${Math.round(pos.coords.accuracy)} m)`;
+  }, () => {
+    where.textContent = 'Location is blocked. Allow it for this site in your phone settings, then try again.';
+  }, { enableHighAccuracy: true, timeout: 15000 });
+}
+
+/** Metres between two points on Earth. */
+function metres(a, b) {
+  const rad = (x) => (x * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const q = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(q), Math.sqrt(1 - q));
+}
+
+let placeWatch = null;
+const inside = {}; // habitId -> true/false at the last reading
+
+/** While the app is open, follow where you are if any habit has a location reminder. */
+function watchPlaces() {
+  const any = active().some((h) => h.place);
+  if (!any || !navigator.geolocation) {
+    if (placeWatch !== null) navigator.geolocation.clearWatch(placeWatch);
+    placeWatch = null;
+    return;
+  }
+  if (placeWatch !== null) return;
+  placeWatch = navigator.geolocation.watchPosition((pos) => checkPlaces({ lat: pos.coords.latitude, lng: pos.coords.longitude }), () => {}, { enableHighAccuracy: true, maximumAge: 30000 });
+}
+
+function checkPlaces(here) {
+  const tk = todayKey();
+  for (const h of active()) {
+    if (!h.place) continue;
+    const now = metres(here, h.place) <= h.place.r;
+    const before = inside[h.id];
+    inside[h.id] = now;
+    const fire = h.place.on === 'arrive' ? now && before !== true : !now && before === true;
+    if (fire && isDue(h, new Date()) && !isDone(h, tk) && markSent(`${h.id}@place`)) {
+      remind(h, `${h.place.on === 'arrive' ? 'You arrived at' : 'You left'} ${h.place.name}. ${h.remindText || 'Time for this habit.'}`);
+    }
+  }
+}
+
+/** Remembers that a reminder went out today; false if it already did. */
+function markSent(id) {
+  const tk = todayKey();
+  let sent = null;
+  try {
+    sent = JSON.parse(localStorage.getItem(REMINDED_KEY) || 'null');
+  } catch (err) {
+    sent = null;
+  }
+  if (!sent || sent.day !== tk || !Array.isArray(sent.ids)) sent = { day: tk, ids: [] };
+  if (sent.ids.includes(id)) return false;
+  sent.ids.push(id);
+  try {
+    localStorage.setItem(REMINDED_KEY, JSON.stringify(sent));
+  } catch (err) {
+    // Storage blocked: the reminder may repeat, which is harmless.
+  }
+  return true;
+}
+
+/* ---------- Super Alert: an alarm that rings until stopped ---------- */
+
+const alarmBox = document.getElementById('alarm');
+let alarmLoop = 0;
+let alarmHabit = null;
+const SNOOZE_KEY = 'habit-for-me:snooze';
+
+function openAlarm(h, body) {
+  alarmHabit = h;
+  const now = new Date();
+  alarmBox.innerHTML = `
+    <div class="alarm-in" style="${habitVars(h)}">
+      <p class="alarm-time">${pad(now.getHours())}:${pad(now.getMinutes())}</p>
+      <div class="alarm-habit"><span class="hc-icon" aria-hidden="true">${esc(h.icon)}</span><b>${esc(h.name)}</b></div>
+      <p class="alarm-msg">${esc(body || h.remindText || 'Time for this habit')}</p>
+      <button type="button" class="alarm-later" data-action="alarm-later">Remind later</button>
+      <button type="button" class="alarm-stop" data-action="alarm-stop">Stop</button>
+    </div>`;
+  if (!alarmBox.open) alarmBox.showModal();
+  clearInterval(alarmLoop);
+  ring(h.ringtone);
+  if (navigator.vibrate) navigator.vibrate([400, 200, 400]);
+  alarmLoop = setInterval(() => {
+    ring(h.ringtone);
+    if (navigator.vibrate) navigator.vibrate([400, 200, 400]);
+  }, 2500);
+}
+
+function stopAlarm() {
+  clearInterval(alarmLoop);
+  if (navigator.vibrate) navigator.vibrate(0);
+  if (alarmBox.open) alarmBox.close();
+}
+alarmBox.addEventListener('close', () => clearInterval(alarmLoop));
+
+/** Remind later: ring again in 10 minutes. */
+function snooze(h) {
+  if (!h) return;
+  let list = {};
+  try {
+    list = JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}') || {};
+  } catch (err) {
+    list = {};
+  }
+  list[h.id] = Date.now() + 10 * 60 * 1000;
+  try {
+    localStorage.setItem(SNOOZE_KEY, JSON.stringify(list));
+  } catch (err) {
+    // Storage blocked: no second ring.
+  }
+}
+
+function checkSnoozes() {
+  let list = {};
+  try {
+    list = JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}') || {};
+  } catch (err) {
+    return;
+  }
+  let changed = false;
+  for (const [id, at] of Object.entries(list)) {
+    if (Date.now() < at) continue;
+    delete list[id];
+    changed = true;
+    const h = findHabit(id);
+    if (h && !isDone(h, todayKey())) remind(h);
+  }
+  if (changed) {
+    try {
+      localStorage.setItem(SNOOZE_KEY, JSON.stringify(list));
+    } catch (err) {
+      // ignore
+    }
+  }
+}
+
 /** Complete all: tick off many habits for the day in one go. */
 function openCompleteAll() {
   const k = ui.date;
@@ -3060,7 +3286,78 @@ document.addEventListener('click', (e) => {
       openSheet(null, { icon, name, goal, unit, type: more.type, days: more.days, color: colors[(ui.tplTab * 5 + Number(value)) % colors.length] });
       break;
     }
+    case 'reminder-type':
+      sheet.insertAdjacentHTML('beforeend', `
+        <div class="mini-panel" role="group" aria-label="Reminder type">
+          <div class="mini-card">
+            <div class="mini-head"><button type="button" class="round" data-action="mini-close" aria-label="Close">${ICON_SVG.close}</button><b>Reminder type</b><span class="round-gap"></span></div>
+            <div class="mini-btns"><button type="button" class="ga-btn green" data-action="add-time">Time</button><button type="button" class="ga-btn green" data-action="place-open">Location</button></div>
+          </div>
+        </div>`);
+      break;
+    case 'mini-close':
+      el.closest('.mini-panel').remove();
+      break;
+    case 'super-info':
+      sheet.insertAdjacentHTML('beforeend', `
+        <div class="mini-panel" role="group" aria-label="Super Alert">
+          <div class="mini-card">
+            <div class="alarm-art" aria-hidden="true">⏰</div>
+            <h3>Super Alert</h3>
+            <p>An alarm-style reminder: the whole screen shows the habit and the ringtone keeps ringing until you tap <strong>Stop</strong> or <strong>Remind later</strong>.</p>
+            <p class="f-hint">A web app can't ring through Silent mode or when it is fully closed. Keep Habit For Me open (it can be in the background), or use <strong>Add reminder to calendar</strong> for an alarm from your calendar.</p>
+            <button type="button" class="save-btn" data-action="mini-close">Confirm</button>
+          </div>
+        </div>`);
+      break;
+    case 'place-open':
+      sheet.querySelectorAll('.mini-panel').forEach((x) => x.remove());
+      openPlacePanel();
+      break;
+    case 'place-here':
+      findMe(el);
+      break;
+    case 'place-r':
+    case 'place-on':
+      el.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === el)));
+      break;
+    case 'place-save': {
+      const panel = el.closest('.unit-panel');
+      const pl = cleanPlace({
+        name: panel.querySelector('.place-name').value,
+        lat: panel.dataset.lat, lng: panel.dataset.lng,
+        r: panel.querySelector('[data-action="place-r"][aria-pressed="true"]').dataset.value,
+        on: panel.querySelector('[data-action="place-on"][aria-pressed="true"]').dataset.value,
+      });
+      if (!pl) {
+        toast('Tap “Use where I am now” first');
+        break;
+      }
+      const form = sheet.querySelector('#habit-form');
+      form.elements.place.value = JSON.stringify(pl);
+      const box = form.querySelector('.rem-times');
+      const old = box.querySelector('.place-chip');
+      if (old) old.remove();
+      box.insertAdjacentHTML('beforeend', placeChip(pl));
+      panel.remove();
+      break;
+    }
+    case 'place-remove': {
+      const form = sheet.querySelector('#habit-form');
+      form.elements.place.value = '';
+      el.closest('.place-chip').remove();
+      break;
+    }
+    case 'alarm-stop':
+      stopAlarm();
+      break;
+    case 'alarm-later':
+      snooze(alarmHabit);
+      stopAlarm();
+      toast('I will remind you again in 10 minutes');
+      break;
     case 'add-time': {
+      sheet.querySelectorAll('.mini-panel').forEach((x) => x.remove());
       const box = sheet.querySelector('.rem-times');
       if (box.children.length < 5) box.insertAdjacentHTML('beforeend', remTimeHtml('12:00'));
       else toast('Up to 5 times');
@@ -3068,7 +3365,7 @@ document.addEventListener('click', (e) => {
     }
     case 'remove-time': {
       const box = el.closest('.rem-times');
-      if (box.children.length > 1) el.closest('.rem-chip').remove();
+      el.closest('.rem-chip').remove();
       break;
     }
     case 'complete-all':
@@ -3618,7 +3915,11 @@ function checkReminders() {
 
 function remind(h, body) {
   const title = `${h.icon} ${h.name}`;
-  const options = { body: body || h.remindText || 'Time for this habit. Tap to open Habit For Me.', icon: 'icons/icon-192.png', tag: `habit-${h.id}` };
+  const options = { body: body || h.remindText || 'Time for this habit. Tap to open Habit For Me.', icon: 'icons/icon-192.png', tag: `habit-${h.id}`, requireInteraction: h.superAlert, vibrate: h.superAlert ? [400, 200, 400, 200, 400] : undefined };
+  if (h.superAlert && !document.hidden) {
+    openAlarm(h, body);
+    return;
+  }
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     const fallback = () => {
       try {
@@ -3633,11 +3934,18 @@ function remind(h, body) {
         .catch(fallback);
     } else fallback();
   }
-  if (!document.hidden) toast(`⏰ Time for ${h.name}`);
+  if (h.superAlert) pendingAlarm = { h, body }; // rings as soon as the app is opened again
+  else if (!document.hidden) toast(`⏰ Time for ${h.name}`);
 }
+let pendingAlarm = null;
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
+  if (pendingAlarm) {
+    openAlarm(pendingAlarm.h, pendingAlarm.body);
+    pendingAlarm = null;
+  }
+  checkSnoozes();
   checkDayChange();
   checkReminders();
 });
@@ -3657,3 +3965,5 @@ applyTheme();
 render();
 checkReminders();
 checkLink();
+watchPlaces();
+setInterval(checkSnoozes, 30 * 1000);
