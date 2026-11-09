@@ -1236,3 +1236,5 @@ dialog.ask::backdrop { background: rgba(0, 0, 0, 0.6); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.row-sub { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--muted); }

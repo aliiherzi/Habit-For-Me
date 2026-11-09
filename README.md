@@ -50,6 +50,8 @@ Check off your habits every day, build streaks, and see your progress.
 - [x] Super Alert: a full-screen alarm that rings until you tap Stop or Remind later (10 minutes)
 - [x] Location reminders: when you arrive at or leave a saved place (while the app is open)
 - [x] Ringtones for reminders: Default, Drum, Universe, Chord, Ding, Rhythm
+- [x] Reminders when the app is closed: through your phone's Calendar (Me → Settings → Add to Calendar, or
+  the question after saving a reminder). Super Alert habits get alarms again after 2 and 5 minutes
 - [x] Backup and restore (download your data as a file, load it on another device)
 
 ## Look and feel

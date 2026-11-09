@@ -74,6 +74,9 @@ Still there from v2: reminders, and a mood and note for each day.
      due and not done. Sent reminders are remembered in localStorage under `habit-for-me:reminded`.
   2. **Add reminder to calendar** in a habit's ••• menu downloads an `.ics` file with a repeating
      event and an alert, so the phone's calendar reminds the owner even when the app is closed.
+     `calendarText(list)` builds it; Me → Settings → "Reminders when the app is closed" puts every habit in one
+     file, and saving a changed reminder asks to add it. Super Alert adds alarms at +2 and +5 minutes.
+     Real push notifications while closed would need a server (e.g. a free Cloudflare Worker) on the owner's account.
 - iPhone: notifications only work after the app is added to the Home Screen (iOS 16.4+).
 
 ## Look and feel (from the Habit Tracker app on iPhone, dark mode)

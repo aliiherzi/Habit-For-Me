@@ -1526,6 +1526,7 @@ function renderMe() {
           <div class="row"><span>Appearance</span>${segButtons('theme', [['dark', 'Dark'], ['light', 'Light'], ['system', 'Auto']], t, 'Appearance')}</div>
           <div class="row"><span>Week starts on</span>${segButtons('week-start', [['6', 'Sat'], ['0', 'Sun'], ['1', 'Mon']], String(ws), 'Week starts on')}</div>
           <div class="row"><span>Reminder notifications</span>${notifControl()}</div>
+          <button class="row" data-action="ics-all"><span>Reminders when the app is closed<small class="row-sub">Puts every reminder in your phone's Calendar</small></span><span class="muted">Add to Calendar</span></button>
           <div class="row"><span id="sound-label">Sounds</span><label class="switch"><input type="checkbox" data-action="set-sound" ${s.sound ? 'checked' : ''} aria-labelledby="sound-label"><span aria-hidden="true"></span></label></div>
           <div class="row"><span id="party-label">Celebrate when all done</span><label class="switch"><input type="checkbox" data-action="set-celebrate" ${s.celebrate ? 'checked' : ''} aria-labelledby="party-label"><span aria-hidden="true"></span></label></div>
           <button class="row" data-action="tab" data-tab="habits"><span>Habit manager</span>${chev}</button>
@@ -2157,6 +2158,8 @@ sheet.addEventListener('submit', (e) => {
     memo: Boolean(fd.get('memo')),
   };
   const existing = ui.editing && findHabit(ui.editing);
+  const remindChanged = data.reminders.length && (!existing || existing.reminders.join() !== data.reminders.join()
+    || existing.superAlert !== data.superAlert || existing.remindText !== data.remindText);
   if (existing) Object.assign(existing, data, startDate ? { createdAt: startDate } : {});
   else state.habits.push({ id: newId(), createdAt: startDate || todayKey(), archived: false, shareId: '', friends: [], friendStats: {}, ...data });
   startCache.clear();
@@ -2166,6 +2169,10 @@ sheet.addEventListener('submit', (e) => {
   render();
   toast(existing ? 'Habit updated' : `${data.icon} ${data.name} added`);
   if (data.reminder || data.place) askNotifications();
+  if (remindChanged) {
+    const h = existing || state.habits[state.habits.length - 1];
+    setTimeout(() => ask('Also put this reminder in your Calendar, so it rings even when Habit For Me is closed?', () => downloadCalendar(h)), 400);
+  }
   // You set the place where you are standing: count as already there, so it rings next time you arrive.
   const saved = existing || state.habits[state.habits.length - 1];
   if (data.place) inside[saved.id] = true;
@@ -3177,10 +3184,9 @@ function exportData() {
 }
 
 /** A calendar file (.ics) with a repeating event and alert, so the calendar app can remind you. */
-function downloadCalendar(h) {
+/** A calendar file (.ics) for some habits: one repeating event per reminder time, with alarms. */
+function calendarText(list) {
   const codes = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-  let first = new Date();
-  while (!h.days.includes(first.getDay())) first = addDays(first, 1);
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const text = (v) => String(v).replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
   const fold = (line) => {
@@ -3201,8 +3207,13 @@ function downloadCalendar(h) {
     parts.push(cur);
     return parts.join('\r\n');
   };
+  const app = `${location.origin}${location.pathname}`;
+  const alarm = (h, after) => ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${text(h.remindText || `${h.icon} ${h.name}`)}`, `TRIGGER:PT${after}M`, 'END:VALARM'];
+  const events = list.flatMap((h) => {
+  let first = new Date();
+  while (!h.days.includes(first.getDay())) first = addDays(first, 1);
   const until = h.endDate ? `;UNTIL=${h.endDate.replace(/-/g, '')}T235959` : '';
-  const events = h.reminders.flatMap((t) => {
+  return h.reminders.flatMap((t) => {
     const [hh, mm] = t.split(':');
     return [
       'BEGIN:VEVENT',
@@ -3213,14 +3224,33 @@ function downloadCalendar(h) {
       `RRULE:${h.days.length === 7 ? 'FREQ=DAILY' : `FREQ=WEEKLY;BYDAY=${h.days.map((d) => codes[d]).join(',')}`}${until}`,
       `SUMMARY:${text(`${h.icon} ${h.name}`)}`,
       `DESCRIPTION:${text(h.remindText || 'A reminder from Habit For Me')}`,
-      'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${text(h.remindText || h.name)}`, 'TRIGGER:PT0M', 'END:VALARM',
+      `URL:${app}`,
+      ...(h.place ? [`LOCATION:${text(h.place.name)}`, `GEO:${h.place.lat.toFixed(6)};${h.place.lng.toFixed(6)}`] : []),
+      // Super Alert: the alarm comes again after 2 and 5 minutes, like "remind later".
+      ...alarm(h, 0), ...(h.superAlert ? [...alarm(h, 2), ...alarm(h, 5)] : []),
       'END:VEVENT',
     ];
   });
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Habit For Me//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', ...events, 'END:VCALENDAR'];
+  });
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Habit For Me//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Habit For Me', ...events, 'END:VCALENDAR'];
+  return `${lines.map(fold).join('\r\n')}\r\n`;
+}
+
+function downloadCalendar(h) {
   const slug = h.name.replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'habit';
-  downloadFile(`${lines.map(fold).join('\r\n')}\r\n`, 'text/calendar', `${slug}-reminder.ics`);
+  downloadFile(calendarText([h]), 'text/calendar', `${slug}-reminder.ics`);
   toast(`Calendar file downloaded. Open it to add ${h.reminders.length > 1 ? 'the reminders' : 'the reminder'}.`);
+}
+
+/** Every habit's reminders in one calendar file, so they ring even when the app is closed. */
+function downloadAllCalendar() {
+  const list = active().filter((h) => h.reminders.length);
+  if (!list.length) {
+    toast('No habit has a reminder time yet');
+    return;
+  }
+  downloadFile(calendarText(list), 'text/calendar', 'habit-for-me-reminders.ics');
+  toast(`Calendar file downloaded with ${plural(list.length, 'habit')}. Open it and tap Add All.`);
 }
 
 /** Asks the browser for permission to show notifications (only after a tap). */
@@ -3700,6 +3730,9 @@ document.addEventListener('click', (e) => {
       break;
     case 'tips':
       openTips();
+      break;
+    case 'ics-all':
+      downloadAllCalendar();
       break;
     case 'ics':
       ui.menu = null;
