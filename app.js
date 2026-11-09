@@ -358,7 +358,7 @@ function normalize(raw) {
     s.habits = raw.habits
       .filter((h) => h && h.id && h.name && !seen.has(String(h.id)) && seen.add(String(h.id)))
       .map((h) => {
-        const days = Array.isArray(h.days)
+        const days = h.period && h.period !== 'day' ? ALL_DAYS.slice() : Array.isArray(h.days)
           ? [...new Set(h.days.map(Number))].filter((d) => d >= 0 && d <= 6).sort()
           : [];
         return {
@@ -373,15 +373,26 @@ function normalize(raw) {
           days: days.length ? days : ALL_DAYS.slice(),
           time: TIMES.some(([t]) => t === h.time) ? h.time : 'any',
           group: cleanText(h.group, 24),
-          reminder: TIME_RE.test(h.reminder) ? h.reminder : '', // "" means no reminder
+          // Reminder times (up to 5); reminder is the first, "" means none. remindText: your own message.
+          reminders: [...new Set((Array.isArray(h.reminders) ? h.reminders : [h.reminder]).filter((t) => TIME_RE.test(t)))].sort().slice(0, 5),
+          remindText: cleanText(h.remindText, 80),
+          // Goal period: day, week, month, or every N days ("days", every 2-30).
+          period: ['week', 'month', 'days'].includes(h.period) ? h.period : 'day',
+          every: clampInt(h.every, 2, 30, 2),
+          endDate: isKey(h.endDate) ? h.endDate : '', // last day of the habit, "" means no end
           memo: h.memo === true, // ask for a memo after finishing
           archived: h.archived === true,
-          createdAt: isKey(h.createdAt) ? h.createdAt : todayKey(),
+          createdAt: isKey(h.createdAt) ? h.createdAt : todayKey(), // also the habit's start date
           // Shared with friends (Group tab): the link id, friends' names and the progress they last sent.
           shareId: cleanText(h.shareId, 40),
           friends: Array.isArray(h.friends) ? [...new Set(h.friends.map((f) => cleanText(f, 30)).filter(Boolean))].slice(0, 20) : [],
           friendStats: cleanFriendStats(h.friendStats),
         };
+      })
+      .map((h) => {
+        h.reminder = h.reminders[0] || '';
+        if (h.endDate && h.endDate < h.createdAt) h.endDate = '';
+        return h;
       });
   }
 
@@ -489,9 +500,9 @@ const ui = {
 /* ---------- 4. Habit maths ---------- */
 
 const countOf = (h, k) => (state.log[h.id] && state.log[h.id][k]) || 0;
-const isDone = (h, k) => (h.type === 'quit' ? countOf(h, k) <= h.goal : countOf(h, k) >= h.goal);
+const isDone = (h, k) => (h.type === 'quit' ? periodCount(h, k) <= h.goal : periodCount(h, k) >= h.goal);
 /** How much of one day's goal is done, 0..1. A quit habit counts as 1 while it stays at or under its limit. */
-const dayShare = (h, k) => (h.type === 'quit' ? Number(countOf(h, k) <= h.goal) : Math.min(countOf(h, k) / h.goal, 1));
+const dayShare = (h, k) => (h.type === 'quit' ? Number(periodCount(h, k) <= h.goal) : Math.min(periodCount(h, k) / h.goal, 1));
 const findHabit = (id) => state.habits.find((h) => h.id === id) || null;
 const active = () => state.habits.filter((h) => !h.archived);
 const entryOf = (k) => state.journal[k] || {};
@@ -527,8 +538,39 @@ function startKey(h) {
 
 /** Is this habit scheduled on this date? */
 function isDue(h, d, start = startKey(h)) {
-  return h.days.includes(d.getDay()) && keyOf(d) >= start;
+  const k = keyOf(d);
+  return h.days.includes(d.getDay()) && k >= start && (!h.endDate || k <= h.endDate);
 }
+
+const periodOf = (h) => h.period || 'day';
+const PERIOD_WORDS = { day: ['day', 'Day'], week: ['week', 'Week'], month: ['month', 'Month'], days: ['round', 'Round'] };
+
+/** First and last day of the goal period that holds day k (a week, a month, or a round of N days). */
+function periodRange(h, k) {
+  const p = periodOf(h);
+  if (p === 'day') return [k, k];
+  const d = parseKey(k);
+  if (p === 'week') {
+    const s = startOfWeek(d);
+    return [keyOf(s), keyOf(addDays(s, 6))];
+  }
+  if (p === 'month') return [keyOf(new Date(d.getFullYear(), d.getMonth(), 1)), keyOf(new Date(d.getFullYear(), d.getMonth() + 1, 0))];
+  const start = parseKey(h.createdAt);
+  const n = Math.max(0, Math.floor(Math.round((d - start) / 864e5) / h.every));
+  const s = addDays(start, n * h.every);
+  return [keyOf(s), keyOf(addDays(s, h.every - 1))];
+}
+
+/** The count that the goal is about: the day's, or the whole period's. */
+function periodCount(h, k) {
+  if (periodOf(h) === 'day') return countOf(h, k);
+  const [a, b] = periodRange(h, k);
+  let sum = 0;
+  for (const [day, n] of Object.entries(state.log[h.id] || {})) if (day >= a && day <= b) sum += n;
+  return Math.round(sum * 10000) / 10000;
+}
+
+const periodLabel = (h) => ({ week: 'This week', month: 'This month', days: `These ${h.every} days` })[periodOf(h)] || '';
 
 function setCount(h, k, n) {
   const log = state.log[h.id] || (state.log[h.id] = {});
@@ -538,7 +580,21 @@ function setCount(h, k, n) {
 }
 
 /** Scheduled days done in a row, counting back from today. Today doesn't break it until it's over. */
+/** Goal periods met in a row, going back from the one holding day k (the current one counts once met). */
+function periodStreak(h) {
+  const start = startKey(h);
+  let k = todayKey();
+  if (!isDone(h, k)) k = keyOf(addDays(parseKey(periodRange(h, k)[0]), -1));
+  let n = 0;
+  while (k >= start && isDone(h, k)) {
+    n++;
+    k = keyOf(addDays(parseKey(periodRange(h, k)[0]), -1));
+  }
+  return n;
+}
+
 function currentStreak(h) {
+  if (periodOf(h) !== 'day') return periodStreak(h);
   const start = startKey(h);
   let d = new Date();
   // A quit habit that went over its limit today has already lost today, so it breaks the streak now.
@@ -556,6 +612,15 @@ function currentStreak(h) {
 
 function bestStreak(h) {
   const tk = todayKey();
+  if (periodOf(h) !== 'day') {
+    let best = 0;
+    let run = 0;
+    for (let k = startKey(h); k <= tk; k = keyOf(addDays(parseKey(periodRange(h, k)[1]), 1))) {
+      if (isDone(h, k)) best = Math.max(best, ++run);
+      else if (periodRange(h, k)[1] < tk) run = 0;
+    }
+    return best;
+  }
   let best = 0;
   let run = 0;
   for (let d = parseKey(startKey(h)); keyOf(d) <= tk; d = addDays(d, 1)) {
@@ -654,6 +719,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const fmtNum = (x) => String(Math.round(x * 100) / 100);
 const isTimeHabit = (h) => h.unit === 'min' || h.unit === 'hr';
 const unitSecs = (h) => (h.unit === 'hr' ? 3600 : 60);
+const usesTimer = (h) => isTimeHabit(h) && periodOf(h) === 'day';
 /** An amount on a card: "1h 30m" or "25m" for habits counted in minutes or hours, else the number. */
 function fmtAmount(h, x) {
   if (!isTimeHabit(h)) return fmtNum(x);
@@ -825,6 +891,7 @@ function renderToday() {
       : `<p class="empty-note">${ui.filter === 'all' ? 'Nothing scheduled for this day. Enjoy the rest! 🌿' : 'No habits here for this day.'}</p>`}
     ${resting ? `<p class="rest-note">${plural(resting, 'habit')} not scheduled ${isToday ? 'today' : 'this day'}</p>` : ''}
     ${isToday ? '' : '<button class="link-btn" data-action="go-today">Back to today</button>'}
+    ${ui.date <= tk && due.some((h) => h.type !== 'quit' && !isDone(h, ui.date)) ? `<button class="complete-all" data-action="complete-all">${ICON_SVG.tick}Complete all</button>` : ''}
     ${tipButton()}`;
 }
 
@@ -859,11 +926,11 @@ function habitCard(h, k) {
   const p = dayShare(h, k);
   const streak = currentStreak(h);
   const running = Boolean(timers[h.id]) && timers[h.id].key === k;
-  const meta = running ? '⏱️ Timer on' : h.desc ? esc(h.desc) : h.reminder ? `⏰ ${esc(fmtTime(h.reminder))}` : '';
-  const amount = `${fmtAmount(h, c)}/${fmtAmount(h, h.goal)}`;
+  const meta = running ? '⏱️ Timer on' : h.desc ? esc(h.desc) : periodLabel(h) || (h.reminder ? `⏰ ${esc(fmtTime(h.reminder))}` : '');
+  const amount = `${fmtAmount(h, periodCount(h, k))}/${fmtAmount(h, h.goal)}`;
   let label;
   let btn;
-  if (isTimeHabit(h)) {
+  if (usesTimer(h)) {
     label = running ? `${h.name}: timer on. Tap to pause.` : `${h.name}: ${amount}. Tap to start the timer.`;
     btn = running ? ICON_SVG.pause : done && !quit ? SEAL_SVG : ICON_SVG.play;
   } else if (quit) {
@@ -878,15 +945,15 @@ function habitCard(h, k) {
   const cls = ['hc', done ? 'done' : '', quit ? 'quit' : '', quit && !done ? 'over' : '', running ? 'running' : ''].filter(Boolean).join(' ');
   return `
     <li class="${cls}" style="${habitVars(h)};--p:${p.toFixed(3)}">
-      ${streak ? `<span class="hc-streak" aria-hidden="true">🔥 ${streak} ${streak === 1 ? 'Day' : 'Days'}</span>` : ''}
-      <button class="hc-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(`${h.name}, ${amount}${streak ? `, ${plural(streak, 'day')} in a row` : ''}. Open.`)}">
+      ${streak ? `<span class="hc-streak" aria-hidden="true">🔥 ${streak} ${PERIOD_WORDS[periodOf(h)][1]}${streak === 1 ? '' : 's'}</span>` : ''}
+      <button class="hc-main" data-action="open" data-id="${esc(h.id)}" aria-label="${esc(`${h.name}, ${amount}${streak ? `, ${plural(streak, PERIOD_WORDS[periodOf(h)][0])} in a row` : ''}. Open.`)}">
         <span class="hc-icon" aria-hidden="true">${esc(h.icon)}</span>
         <span class="hc-body">
           <span class="hc-name">${esc(h.name)}</span>
           <span class="hc-meta"><span class="hc-count">${amount}</span>${meta ? `<span class="hc-desc">${meta}</span>` : ''}</span>
         </span>
       </button>
-      <button class="hc-btn" data-action="tick" data-id="${esc(h.id)}"${quit || isTimeHabit(h) ? '' : ` aria-pressed="${done}"`} aria-label="${esc(label)}">${btn}</button>
+      <button class="hc-btn" data-action="tick" data-id="${esc(h.id)}"${quit || usesTimer(h) ? '' : ` aria-pressed="${done}"`} aria-label="${esc(label)}">${btn}</button>
     </li>`;
 }
 
@@ -895,10 +962,11 @@ function habitCard(h, k) {
 function renderCounter(h) {
   const k = ui.date;
   const c = countOf(h, k);
+  const total = periodCount(h, k); // the day's count, or the whole week's / month's
   const quit = h.type === 'quit';
-  const over = quit && c > h.goal;
-  const done = !quit && c >= h.goal;
-  const p = quit ? (h.goal ? Math.min(c / h.goal, 1) : Number(c > 0)) : Math.min(c / h.goal, 1);
+  const over = quit && total > h.goal;
+  const done = !quit && total >= h.goal;
+  const p = quit ? (h.goal ? Math.min(total / h.goal, 1) : Number(total > 0)) : Math.min(total / h.goal, 1);
   const R = 116;
   const C = 2 * Math.PI * R;
   const armed = ui.confirm === `delete:${h.id}`;
@@ -911,7 +979,7 @@ function renderCounter(h) {
     { action: 'delete', attrs: id, label: armed ? 'Tap again to delete for good' : 'Delete', danger: true },
   ], 'pop-right') : '';
   const unit = h.unit ? ` ${esc(h.unit)}` : '';
-  const timed = isTimeHabit(h) && k === todayKey();
+  const timed = usesTimer(h) && k === todayKey();
   const timerView = timed && !ui.countView;
   const fb = (action, cls, icon, label) => `<button class="foot-btn" data-action="${action}" ${id}><span class="fi ${cls}">${icon}</span>${label}</button>`;
   const foot = [
@@ -922,7 +990,8 @@ function renderCounter(h) {
     fb('stat', 'stat', ICON_SVG.bars, 'Stat'),
   ].filter(Boolean).join('');
   const limit = isTimeHabit(h) ? fmtAmount(h, h.goal) : `${h.goal}${unit}`;
-  const rule = quit ? `<p class="cnt-desc rule${over ? ' over' : ''}">${over ? 'Over the limit today' : h.goal ? `*Don't exceed ${limit} each day` : '*Not even once today'}</p>` : '';
+  const each = { day: 'each day', week: 'each week', month: 'each month', days: `every ${h.every} days` }[periodOf(h)];
+  const rule = quit ? `<p class="cnt-desc rule${over ? ' over' : ''}">${over ? `Over the limit ${periodOf(h) === 'day' ? 'today' : periodLabel(h).toLowerCase()}` : h.goal ? `*Don't exceed ${limit} ${each}` : `*Not even once ${periodOf(h) === 'day' ? 'today' : periodLabel(h).toLowerCase()}`}</p>` : '';
   const head = `
       ${topBar(`<span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}`,
         roundBtn('back', ICON_SVG.left, 'Back'),
@@ -967,8 +1036,8 @@ function renderCounter(h) {
         </svg>
         <div class="ring-in">
           <span class="ring-emoji" aria-hidden="true">${esc(h.icon)}</span>
-          <button class="ring-num" data-action="keypad" ${id} aria-label="${esc(`${fmtNum(c)} of ${h.goal}${h.unit ? ` ${h.unit}` : ''}. Tap to type a number.`)}">${fmtNum(c)}</button>
-          <span class="ring-goal" aria-hidden="true">/${h.goal}${unit}</span>
+          <button class="ring-num" data-action="keypad" ${id} aria-label="${esc(`${fmtNum(total)} of ${h.goal}${h.unit ? ` ${h.unit}` : ''}. Tap to type a number.`)}">${fmtNum(total)}</button>
+          <span class="ring-goal" aria-hidden="true">/${h.goal}${unit}${periodLabel(h) ? `<br>${periodLabel(h).toLowerCase()}` : ''}</span>
         </div>
         <button class="ring-plus" data-action="add-one" ${id} aria-label="Add one">${ICON_SVG.plus}</button>
         ${c > 0 ? `<button class="ring-minus" data-action="sub-one" ${id} aria-label="Take one away">${ICON_SVG.minus}</button>` : ''}
@@ -991,7 +1060,8 @@ function dayClass(h, d, start, tk) {
   const k = keyOf(d);
   const c = countOf(h, k);
   if (k > tk) return 'future';
-  if (h.type === 'quit') return !c && !isDue(h, d, start) ? 'off' : c <= h.goal ? 'done' : 'miss';
+  if (h.type === 'quit') return !c && !isDue(h, d, start) ? 'off' : isDone(h, k) ? 'done' : 'miss';
+  if (periodOf(h) !== 'day') return isDone(h, k) ? 'done' : c > 0 ? 'part' : periodRange(h, k)[1] >= tk || !isDue(h, d, start) ? 'off' : 'miss';
   if (c >= h.goal) return 'done';
   if (c > 0) return 'part';
   return isDue(h, d, start) ? 'miss' : 'off';
@@ -1507,7 +1577,21 @@ function showSheet(html) {
   sheet.querySelector('.sheet-inner').scrollTop = 0;
 }
 
-function daysNote(goal, days, unit, quit) {
+/** "Goal per day", "Allowed per week", "Goal every 3 days"… */
+function goalLabel(quit, period, every) {
+  const per = { day: 'per day', week: 'per week', month: 'per month', days: `every ${every} days` }[period];
+  return `${quit ? 'Allowed' : 'Goal'} ${per}`;
+}
+
+/** One reminder time in the form, with a button to take it away. */
+const remTimeHtml = (t) => `<span class="rem-chip"><input type="time" name="reminder" value="${t}" class="time-chip" aria-label="Reminder time"><button type="button" class="rem-x" data-action="remove-time" aria-label="Remove this time">${ICON_SVG.close}</button></span>`;
+
+function daysNote(goal, days, unit, quit, period = 'day', every = 2) {
+  if (period !== 'day') {
+    const u = goal === 1 ? (unit || 'times').replace(/sses$/, 'ss').replace(/([^s])s$/, '$1') : unit || 'times';
+    const each = { week: 'each week', month: 'each month', days: `every ${every} days` }[period];
+    return quit ? `*Don't exceed ${goal} ${u} ${each}` : `*Complete ${goal} ${u} ${each}, on any days`;
+  }
   if (!days.length) return '*Pick at least one day';
   if (quit) {
     const when = days.length === 7 ? 'each day' : `on each ${weekOrder().filter((d) => days.includes(d)).map(dayCode).join(' ')}`;
@@ -1527,7 +1611,13 @@ function updateDaysNote(form) {
   const quit = isQuitForm(form);
   const goal = clampInt(form.elements.goal.value, quit ? 0 : 1, MAX_COUNT, 1);
   const days = [...form.querySelectorAll('input[name="days"]:checked')].map((i) => Number(i.value));
-  form.querySelector('.f-note').textContent = daysNote(goal, days, form.elements.unit.value.trim(), quit);
+  const period = form.elements.period.value;
+  const every = clampInt(form.elements.every.value, 2, 30, 2);
+  form.querySelector('.f-note').textContent = daysNote(goal, days, form.elements.unit.value.trim(), quit, period, every);
+  form.querySelector('#goal-label').textContent = goalLabel(quit, period, every);
+  form.querySelector('.every').hidden = period !== 'days';
+  form.querySelector('.day-circles').hidden = period !== 'day';
+  form.querySelector('.presets').hidden = period !== 'day';
 }
 
 function setFormColor(form, c) {
@@ -1547,6 +1637,12 @@ function openSheet(h, preset) {
     goal: p.goal !== undefined ? p.goal : 1,
     unit: p.unit || '',
     type: p.type || 'build',
+    period: 'day',
+    every: 2,
+    createdAt: todayKey(),
+    endDate: '',
+    reminders: [],
+    remindText: '',
     days: p.days || ALL_DAYS,
     time: 'any',
     group: '',
@@ -1607,7 +1703,15 @@ function openSheet(h, preset) {
             <label class="opt tchip"><input type="radio" name="type" value="quit" ${v.type === 'quit' ? 'checked' : ''}><span>Quit</span></label>
           </div>
         </div>
-        <div class="f-row"><span id="goal-label">${v.type === 'quit' ? 'Allowed per day' : 'Goal per day'}</span>
+        <div class="f-row"><span id="period-label">Goal period</span>
+          <div class="period-pick">
+            <select name="period" aria-labelledby="period-label">
+              ${[['day', 'Day-Long'], ['week', 'Week-Long'], ['month', 'Month-Long'], ['days', 'Every few days']].map(([val, label]) => `<option value="${val}" ${v.period === val ? 'selected' : ''}>${label}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <label class="f-row every"${v.period === 'days' ? '' : ' hidden'}><span>Repeat every</span><span class="every-in"><input type="number" name="every" min="2" max="30" value="${v.every}" inputmode="numeric" aria-label="Every how many days"> days</span></label>
+        <div class="f-row"><span id="goal-label">${goalLabel(v.type === 'quit', v.period, v.every)}</span>
           <div class="stepper" role="group" aria-labelledby="goal-label">
             <button type="button" data-action="step" data-delta="-1" aria-label="One fewer">−</button>
             <input type="number" name="goal" min="${v.type === 'quit' ? 0 : 1}" max="${MAX_COUNT}" value="${v.goal}" inputmode="numeric" aria-labelledby="goal-label">
@@ -1620,15 +1724,15 @@ function openSheet(h, preset) {
 
       <section class="fcard">
         <div class="f-row"><span>Task days</span>
-          <div class="presets">
+          <div class="presets"${v.period === 'day' ? '' : ' hidden'}>
             <button type="button" class="pchip sm" data-action="preset" data-value="0,1,2,3,4,5,6">Every day</button>
             <button type="button" class="pchip sm" data-action="preset" data-value="1,2,3,4,5">Weekdays</button>
           </div>
         </div>
-        <div class="day-circles" role="group" aria-label="Task days">
+        <div class="day-circles" role="group" aria-label="Task days"${v.period === 'day' ? '' : ' hidden'}>
           ${weekOrder().map((d) => `<label class="opt day-opt"><input type="checkbox" name="days" value="${d}" ${v.days.includes(d) ? 'checked' : ''} aria-label="${esc(dayName(d, 'long'))}"><span>${esc(dayCode(d))}</span></label>`).join('')}
         </div>
-        <p class="f-note" aria-live="polite">${esc(daysNote(v.goal, v.days, v.unit, v.type === 'quit'))}</p>
+        <p class="f-note" aria-live="polite">${esc(daysNote(v.goal, v.days, v.unit, v.type === 'quit', v.period, v.every))}</p>
       </section>
 
       <section class="fcard">
@@ -1642,10 +1746,22 @@ function openSheet(h, preset) {
       <section class="fcard">
         <div class="f-row"><span id="rem-label">Reminder</span><label class="switch"><input type="checkbox" name="remind" ${v.reminder ? 'checked' : ''} aria-labelledby="rem-label"><span aria-hidden="true"></span></label></div>
         <div class="rem-time"${v.reminder ? '' : ' hidden'}>
-          <label class="f-row"><span>Time</span><input type="time" name="reminder" value="${v.reminder || '08:00'}" class="time-chip"></label>
+          <div class="f-row"><span>Time</span><button type="button" class="add-time" data-action="add-time" aria-label="Add another time">${ICON_SVG.plus}</button></div>
+          <div class="rem-times">${(v.reminders.length ? v.reminders : ['08:00']).map(remTimeHtml).join('')}</div>
+          <input type="text" name="remindText" maxlength="80" value="${esc(v.remindText)}" placeholder="Reminder message (optional)" class="rem-text" autocomplete="off" aria-label="Reminder message">
           <p class="f-hint">You get a notification while Habit For Me is open. For reminders when it's closed, use <strong>Add reminder to calendar</strong> in the habit's ••• menu.</p>
         </div>
         <div class="f-row"><span id="memo-label">Write a memo after finishing</span><label class="switch"><input type="checkbox" name="memo" ${v.memo ? 'checked' : ''} aria-labelledby="memo-label"><span aria-hidden="true"></span></label></div>
+      </section>
+
+      <section class="fcard">
+        <p class="f-label pad">Habit term</p>
+        <div class="term">
+          <label><span>Start date</span><input type="date" name="startDate" value="${v.createdAt}" max="${todayKey()}" class="date-chip"></label>
+          <span class="term-line" aria-hidden="true"></span>
+          <label><span>End date</span><input type="date" name="endDate" value="${v.endDate}" class="date-chip" aria-describedby="end-hint"></label>
+        </div>
+        <p class="f-hint" id="end-hint">Leave the end date empty for no end. After the end date the habit stops showing on Today.</p>
       </section>
 
       <p class="form-error" role="alert" hidden></p>
@@ -1865,11 +1981,10 @@ sheet.addEventListener('input', (e) => {
   if (e.target.name === 'icon_custom' && e.target.value.trim()) form.querySelector('.preview').textContent = e.target.value.trim();
   if (e.target.name === 'type') {
     const quit = isQuitForm(form);
-    form.querySelector('#goal-label').textContent = quit ? 'Allowed per day' : 'Goal per day';
     form.elements.goal.min = quit ? 0 : 1;
     if (!quit && Number(form.elements.goal.value) < 1) form.elements.goal.value = 1;
   }
-  if (['goal', 'unit', 'type'].includes(e.target.name)) updateDaysNote(form);
+  if (['goal', 'unit', 'type', 'period', 'every'].includes(e.target.name)) updateDaysNote(form);
 });
 
 sheet.addEventListener('submit', (e) => {
@@ -1893,6 +2008,25 @@ sheet.addEventListener('submit', (e) => {
     shareText(`${friend ? `Salaam ${friend}! ` : ''}Let's build “${h.icon} ${h.name}” together on Habit For Me 💪 Open this link to join. (If you use the app from your home screen: Group → + → Join with a link, and paste it.)`, link);
     Object.assign(ui, { tab: 'group', detail: null, stat: false, menu: null });
     render();
+    return;
+  }
+
+  if (form.id === 'all-form') {
+    const k = ui.date;
+    const ids = fd.getAll('ids').map(String);
+    for (const id of ids) {
+      const h = findHabit(id);
+      if (!h || isDone(h, k)) continue;
+      cancelTimer(h);
+      setCount(h, k, countOf(h, k) + h.goal - periodCount(h, k));
+    }
+    sheet.close();
+    render();
+    if (!ids.length) return;
+    const due = active().filter((x) => isDue(x, parseKey(k)));
+    if (k === todayKey() && due.every((x) => isDone(x, k)) && state.settings.celebrate) celebrate();
+    else chime();
+    toast(`${plural(ids.length, 'habit')} completed`);
     return;
   }
 
@@ -1960,9 +2094,14 @@ sheet.addEventListener('submit', (e) => {
 
   // The add/edit habit form.
   const name = String(fd.get('name') || '').trim();
-  const days = fd.getAll('days').map(Number).sort();
+  const period = ['week', 'month', 'days'].includes(fd.get('period')) ? fd.get('period') : 'day';
+  const days = period === 'day' ? fd.getAll('days').map(Number).sort() : ALL_DAYS.slice();
+  const startDate = isKey(fd.get('startDate')) && fd.get('startDate') <= todayKey() ? fd.get('startDate') : null;
+  const endDate = isKey(fd.get('endDate')) ? fd.get('endDate') : '';
+  const times = [...new Set(fd.getAll('reminder').map(String).filter((t) => TIME_RE.test(t)))].sort().slice(0, 5);
   const error = form.querySelector('.form-error');
-  const problem = !name ? 'Please give your habit a name.' : !days.length ? 'Pick at least one day.' : '';
+  const problem = !name ? 'Please give your habit a name.' : !days.length ? 'Pick at least one day.'
+    : endDate && startDate && endDate < startDate ? 'The end date is before the start date.' : '';
   if (problem) {
     error.textContent = problem;
     error.hidden = false;
@@ -1982,12 +2121,18 @@ sheet.addEventListener('submit', (e) => {
     days,
     time: String(fd.get('time') || 'any'),
     group: String(fd.get('group') || '').trim().slice(0, 24),
-    reminder: fd.get('remind') && TIME_RE.test(String(fd.get('reminder'))) ? String(fd.get('reminder')) : '',
+    reminders: fd.get('remind') ? times : [],
+    reminder: fd.get('remind') ? times[0] || '' : '',
+    remindText: String(fd.get('remindText') || '').trim().slice(0, 80),
+    period,
+    every: clampInt(fd.get('every'), 2, 30, 2),
+    endDate,
     memo: Boolean(fd.get('memo')),
   };
   const existing = ui.editing && findHabit(ui.editing);
-  if (existing) Object.assign(existing, data);
-  else state.habits.push({ id: newId(), createdAt: todayKey(), archived: false, shareId: '', friends: [], friendStats: {}, ...data });
+  if (existing) Object.assign(existing, data, startDate ? { createdAt: startDate } : {});
+  else state.habits.push({ id: newId(), createdAt: startDate || todayKey(), archived: false, shareId: '', friends: [], friendStats: {}, ...data });
+  startCache.clear();
 
   save();
   sheet.close();
@@ -2196,6 +2341,12 @@ askBox.addEventListener('close', () => {
 
 /** After a count changes: a buzz, a chime when a habit is finished, and confetti when the whole day is done. */
 function afterChange(h, before, after, k, quiet) {
+  if (periodOf(h) !== 'day') {
+    // Goal periods: compare the whole period's total before and after.
+    const total = periodCount(h, k);
+    before = total - (after - before);
+    after = total;
+  }
   if (h.type === 'quit') {
     // Quit habits: a warning buzz when going over the limit, no cheering.
     const broke = before <= h.goal && after > h.goal;
@@ -2328,7 +2479,7 @@ function timerTick() {
   for (const id of ids) {
     const h = findHabit(id);
     const t = timers[id];
-    if (!h || !isTimeHabit(h)) {
+    if (!h || !usesTimer(h)) {
       delete timers[id];
       saveTimers();
     } else {
@@ -2713,7 +2864,7 @@ function tick(h) {
   const k = ui.date;
   if (k > todayKey()) return;
   const c = countOf(h, k);
-  if (isTimeHabit(h) && k === todayKey()) {
+  if (usesTimer(h) && k === todayKey()) {
     if (timers[h.id]) {
       stopTimer(h);
       render();
@@ -2722,6 +2873,17 @@ function tick(h) {
       startTimer(h);
       openCounter(h);
     }
+    return;
+  }
+  if (periodOf(h) !== 'day' && h.type !== 'quit') {
+    if (!isDone(h, k)) {
+      setCount(h, k, c + 1);
+      render();
+      afterChange(h, c, c + 1, k);
+    } else if (h.goal === 1 && c > 0) {
+      setCount(h, k, c - 1);
+      render();
+    } else openCounter(h);
     return;
   }
   if (h.type === 'quit') {
@@ -2742,6 +2904,26 @@ function tick(h) {
   setCount(h, k, next);
   render();
   afterChange(h, c, next, k);
+}
+
+/** Complete all: tick off many habits for the day in one go. */
+function openCompleteAll() {
+  const k = ui.date;
+  const list = active().filter(matchesFilter).filter((h) => isDue(h, parseKey(k)) && h.type !== 'quit' && !isDone(h, k));
+  showSheet(`
+    <form id="all-form" novalidate>
+      <div class="all-head">
+        <button type="button" class="link-btn sm" data-action="all-toggle">Deselect all</button>
+        <h2 id="sheet-title">Complete all</h2>
+        <button type="button" class="link-btn sm" data-action="close-sheet">Cancel</button>
+      </div>
+      <ul class="all-list">${list.map((h) => `
+        <li><label class="all-row" style="${habitVars(h)}"><input type="checkbox" name="ids" value="${esc(h.id)}" checked>
+          <span class="all-box" aria-hidden="true">${ICON_SVG.tick}</span><span class="all-name"><span aria-hidden="true">${esc(h.icon)}</span> ${esc(h.name)}</span>
+          <span class="all-amount">${fmtAmount(h, periodCount(h, k))}/${fmtAmount(h, h.goal)}</span></label></li>`).join('')}
+      </ul>
+      <button type="submit" class="save-btn">Complete all</button>
+    </form>`);
 }
 
 function openCounter(h) {
@@ -2773,7 +2955,6 @@ function downloadCalendar(h) {
   const codes = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
   let first = new Date();
   while (!h.days.includes(first.getDay())) first = addDays(first, 1);
-  const [hh, mm] = h.reminder.split(':');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const text = (v) => String(v).replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
   const fold = (line) => {
@@ -2794,22 +2975,26 @@ function downloadCalendar(h) {
     parts.push(cur);
     return parts.join('\r\n');
   };
-  const lines = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Habit For Me//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-    'BEGIN:VEVENT',
-    `UID:${h.id}@habit-for-me`,
-    `DTSTAMP:${stamp}`,
-    `DTSTART:${keyOf(first).replace(/-/g, '')}T${hh}${mm}00`,
-    'DURATION:PT15M',
-    `RRULE:${h.days.length === 7 ? 'FREQ=DAILY' : `FREQ=WEEKLY;BYDAY=${h.days.map((d) => codes[d]).join(',')}`}`,
-    `SUMMARY:${text(`${h.icon} ${h.name}`)}`,
-    'DESCRIPTION:A reminder from Habit For Me',
-    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${text(h.name)}`, 'TRIGGER:PT0M', 'END:VALARM',
-    'END:VEVENT', 'END:VCALENDAR',
-  ];
+  const until = h.endDate ? `;UNTIL=${h.endDate.replace(/-/g, '')}T235959` : '';
+  const events = h.reminders.flatMap((t) => {
+    const [hh, mm] = t.split(':');
+    return [
+      'BEGIN:VEVENT',
+      `UID:${h.id}-${hh}${mm}@habit-for-me`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART:${keyOf(first).replace(/-/g, '')}T${hh}${mm}00`,
+      'DURATION:PT15M',
+      `RRULE:${h.days.length === 7 ? 'FREQ=DAILY' : `FREQ=WEEKLY;BYDAY=${h.days.map((d) => codes[d]).join(',')}`}${until}`,
+      `SUMMARY:${text(`${h.icon} ${h.name}`)}`,
+      `DESCRIPTION:${text(h.remindText || 'A reminder from Habit For Me')}`,
+      'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${text(h.remindText || h.name)}`, 'TRIGGER:PT0M', 'END:VALARM',
+      'END:VEVENT',
+    ];
+  });
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Habit For Me//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', ...events, 'END:VCALENDAR'];
   const slug = h.name.replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'habit';
   downloadFile(`${lines.map(fold).join('\r\n')}\r\n`, 'text/calendar', `${slug}-reminder.ics`);
-  toast('Calendar file downloaded. Open it to add the reminder.');
+  toast(`Calendar file downloaded. Open it to add ${h.reminders.length > 1 ? 'the reminders' : 'the reminder'}.`);
 }
 
 /** Asks the browser for permission to show notifications (only after a tap). */
@@ -2873,6 +3058,27 @@ document.addEventListener('click', (e) => {
       const [icon, name, goal, unit, more = {}] = TEMPLATE_TABS[ui.tplTab][2][Number(value)];
       const colors = PALETTES[0][1];
       openSheet(null, { icon, name, goal, unit, type: more.type, days: more.days, color: colors[(ui.tplTab * 5 + Number(value)) % colors.length] });
+      break;
+    }
+    case 'add-time': {
+      const box = sheet.querySelector('.rem-times');
+      if (box.children.length < 5) box.insertAdjacentHTML('beforeend', remTimeHtml('12:00'));
+      else toast('Up to 5 times');
+      break;
+    }
+    case 'remove-time': {
+      const box = el.closest('.rem-times');
+      if (box.children.length > 1) el.closest('.rem-chip').remove();
+      break;
+    }
+    case 'complete-all':
+      openCompleteAll();
+      break;
+    case 'all-toggle': {
+      const boxes = [...sheet.querySelectorAll('#all-form input[name="ids"]')];
+      const on = !boxes.every((b) => b.checked);
+      boxes.forEach((b) => { b.checked = on; });
+      el.textContent = on ? 'Deselect all' : 'Select all';
       break;
     }
     case 'tpl-custom':
@@ -3050,7 +3256,9 @@ document.addEventListener('click', (e) => {
         openKeypad(h);
         break;
       }
-      const after = before >= h.goal ? 0 : h.goal;
+      const total = periodCount(h, ui.date);
+      // Done: undo today's part. Not done: add what the day (or the period) still needs.
+      const after = total >= h.goal ? 0 : before + h.goal - total;
       setCount(h, ui.date, after);
       render();
       afterChange(h, before, after, ui.date);
@@ -3388,13 +3596,16 @@ function checkReminders() {
   if (!sent || sent.day !== tk || !Array.isArray(sent.ids)) sent = { day: tk, ids: [] };
   let changed = false;
   for (const h of active()) {
-    if (!h.reminder || sent.ids.includes(h.id)) continue;
-    const [hh, mm] = h.reminder.split(':').map(Number);
-    const late = mins - (hh * 60 + mm);
-    if (late < 0 || late > 60) continue; // only in the hour after the reminder time
-    sent.ids.push(h.id);
-    changed = true;
-    if (isDue(h, now) && !isDone(h, tk)) remind(h);
+    for (const t of h.reminders) {
+      const id = `${h.id}@${t}`;
+      if (sent.ids.includes(id)) continue;
+      const [hh, mm] = t.split(':').map(Number);
+      const late = mins - (hh * 60 + mm);
+      if (late < 0 || late > 60) continue; // only in the hour after the reminder time
+      sent.ids.push(id);
+      changed = true;
+      if (isDue(h, now) && !isDone(h, tk)) remind(h);
+    }
   }
   if (changed) {
     try {
@@ -3407,7 +3618,7 @@ function checkReminders() {
 
 function remind(h, body) {
   const title = `${h.icon} ${h.name}`;
-  const options = { body: body || 'Time for this habit. Tap to open Habit For Me.', icon: 'icons/icon-192.png', tag: `habit-${h.id}` };
+  const options = { body: body || h.remindText || 'Time for this habit. Tap to open Habit For Me.', icon: 'icons/icon-192.png', tag: `habit-${h.id}` };
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     const fallback = () => {
       try {

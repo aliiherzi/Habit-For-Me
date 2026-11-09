@@ -43,6 +43,10 @@ Check off your habits every day, build streaks, and see your progress.
 - [x] Dark look by default, a sun/moon button on Today to switch to light, and Auto in Me → Settings
 - [x] Works offline and installs on your phone's home screen like an app
 - [x] Seedling logo 🌱 on a black background (home screen and browser tab)
+- [x] Goal period: a goal per day, per week, per month, or every few days (e.g. Gym 3 times a week)
+- [x] Habit term: a start date and an optional end date
+- [x] Several reminder times for one habit, and your own reminder message
+- [x] Complete all: tick off many of the day's habits at once
 - [x] Backup and restore (download your data as a file, load it on another device)
 
 ## Look and feel

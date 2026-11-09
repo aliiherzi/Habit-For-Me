@@ -54,7 +54,8 @@ Still there from v2: reminders, and a mood and note for each day.
   renaming or removing files.
 - Data shape (version 4; v4 only changed the default week start to Saturday): `{ version, habits: [{ id, name, desc, icon, color, goal (1-999), unit,
   days: [0-6], time: any|morning|afternoon|evening, group, reminder: "HH:MM" or "", memo, archived,
-  createdAt, type: build|quit (quit: goal is a limit, 0-999, done while count <= goal),
+  createdAt (also the start date), endDate ("" = no end), period: day|week|month|days, every (2-30, for days),
+  reminders: ["HH:MM", ≤5] (reminder = the first), remindText, type: build|quit (quit: goal is a limit, 0-999, done while count <= goal),
   shareId, friends: [names], friendStats: { name: { day, week: "1101-01", streak, at } } }], log: { habitId: { "YYYY-MM-DD": count } }, memos: { habitId: { "YYYY-MM-DD": { text, emoji } } },
   journal: { "YYYY-MM-DD": { mood: 1-5, note } }, settings: { theme: dark|light|system, weekStart: 6 Sat | 0 Sun | 1 Mon, name, avatar, sound, celebrate, focusSound, endSound } }`
   (sound and celebrate are true unless turned off). Counts of habits in `min`/`hr` can have up to
@@ -109,6 +110,11 @@ Still there from v2: reminders, and a mood and note for each day.
   Sound, Countdown, Memo, Stat. Countdown (`openCountdown`) picks count down/up and the length (5m-2h), which
   sets the goal (an `hr` habit switches to `min`). Once the goal is done, ▶ runs another full round
   (`timerTarget`). Focus and end sounds are made in `focusBuffer()`/`endSound()`.
+- Goal period: `periodRange(h, k)` gives the week (from the week start), month, or round of `every` days
+  (counted from createdAt) holding day k; `periodCount` sums it and `isDone`/`dayShare` use it, so every day of
+  a met period counts as done. Streaks count periods ("🔥 2 Weeks"). Week/month/days habits use all days and the
+  counter, not the timer (`usesTimer`). Cards show the period's total and "This week".
+- Complete all: a pill under Today's list (when habits are left) opens a sheet to tick many at once.
 - Group tab: shared habits with your row and each friend's (7 dots and streak), Remind, My progress, Invite.
   There is no server: links (`#h=` + base64 JSON with the habit and the sender's last 7 days) go by WhatsApp or
   the share sheet; opening one adds the habit or updates that friend. iPhone home-screen apps have their own
